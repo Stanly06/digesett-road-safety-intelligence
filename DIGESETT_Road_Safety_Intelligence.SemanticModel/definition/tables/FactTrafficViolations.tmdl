@@ -1,0 +1,61 @@
+table FactTrafficViolations
+	lineageTag: dd70ab63-32b4-4cd3-b2a7-dab923667341
+
+	column MonthStartDate
+		dataType: dateTime
+		isHidden
+		formatString: Short Date
+		lineageTag: 755cf64a-9be9-4696-adcf-98b8c906a946
+		summarizeBy: none
+		sourceColumn: MonthStartDate
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column InfractionID
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: ce015172-bb50-4abb-b805-0d49a1234bab
+		summarizeBy: none
+		sourceColumn: InfractionID
+
+	column ViolationCount
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: 13377d68-ab08-45a7-8c2a-24ad116898cb
+		summarizeBy: sum
+		sourceColumn: ViolationCount
+
+	partition FactTrafficViolations = m
+		mode: import
+		source =
+				let
+					Origen = stg_Infracciones,
+					Unido = Table.NestedJoin(
+						Origen, {"InfractionNameRaw"},
+						MapInfraction, {"InfractionNameRaw"},
+						"Map", JoinKind.LeftOuter),
+					ConID = Table.ExpandTableColumn(Unido, "Map", {"InfractionID"}, {"InfractionID"}),
+					UltimoMes = List.Max(
+						Table.SelectRows(ConID, each [ViolationCount] > 0)[MonthStartDate]),
+					SinFuturo = Table.SelectRows(ConID, each [MonthStartDate] <= UltimoMes),
+					EneMay2019 = Table.SelectRows(SinFuturo, each [Year] = 2019 and [MonthNumber] <= 5),
+					SumaPorTipo = Table.Group(
+						EneMay2019, {"InfractionID"},
+						{{"Suma", each List.Sum([ViolationCount]), Int64.Type}}),
+					TiposNoAplica = List.Buffer(
+						Table.SelectRows(SumaPorTipo, each [Suma] = 0)[InfractionID]),
+					SinNoAplica = Table.SelectRows(
+						SinFuturo,
+						each not ([Year] = 2019 and [MonthNumber] <= 5
+								and List.Contains(TiposNoAplica, [InfractionID]))),
+					Resultado = Table.SelectColumns(
+						SinNoAplica, {"MonthStartDate", "InfractionID", "ViolationCount"}),
+					Tipos = Table.TransformColumnTypes(
+						Resultado,
+						{{"MonthStartDate", type date}, {"InfractionID", Int64.Type},
+						{"ViolationCount", Int64.Type}})
+				in
+					Tipos
+

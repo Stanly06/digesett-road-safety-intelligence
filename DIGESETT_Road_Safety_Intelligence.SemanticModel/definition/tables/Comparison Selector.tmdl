@@ -1,0 +1,22 @@
+table 'Comparison Selector'
+	lineageTag: a257d157-93b0-4720-8b3b-bb44dc9c3966
+
+	column Comparison
+		dataType: string
+		lineageTag: 720c642b-b722-4295-b6b5-83996dbf6604
+		summarizeBy: none
+		sourceColumn: Comparison
+		sortByColumn: ComparisonOrder
+
+	column ComparisonOrder
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 6d9e65bc-dfeb-45c1-8d0d-7240ce7e0dbe
+		summarizeBy: none
+		sourceColumn: ComparisonOrder
+
+	partition 'Comparison Selector' = m
+		mode: import
+		source = #table(type table [Comparison = text, ComparisonOrder = Int64.Type], {{"Interanual (YoY)", 1}, {"Mensual (MoM)", 2}})
+

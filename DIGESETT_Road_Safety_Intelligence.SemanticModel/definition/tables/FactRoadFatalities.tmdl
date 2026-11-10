@@ -1,0 +1,29 @@
+table FactRoadFatalities
+	lineageTag: 98a56248-d4de-464d-a097-91545307d678
+
+	column MonthStartDate
+		dataType: dateTime
+		isHidden
+		formatString: Short Date
+		lineageTag: efee6607-3c64-4926-a8f1-f454658c86a7
+		summarizeBy: none
+		sourceColumn: MonthStartDate
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Fatalities
+		dataType: int64
+		isHidden
+		formatString: #,0
+		lineageTag: a6610005-b69b-43ef-a5f2-b91961192f53
+		summarizeBy: sum
+		sourceColumn: Fatalities
+
+	partition FactRoadFatalities = m
+		mode: import
+		source =
+				let
+					Origen = stg_Fallecimientos
+				in
+					Origen
+

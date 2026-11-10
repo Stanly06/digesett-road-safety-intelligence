@@ -1,0 +1,96 @@
+expression pRutaDatos = "C:\Users\stanl\Documents\DIGESETT\data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 5326a58e-6391-46e1-9dbc-17f8a837dc7c
+
+	annotation PBI_ResultType = Text
+
+expression stg_Infracciones =
+		let
+			Origen = Excel.Workbook(
+				File.Contents(pRutaDatos & "raw\Infracciones-de-Transito-DIGESETT-2018-2026.xlsx"),
+				null, true),
+			Hoja = Origen{[Item = "INFRACCIONES 2018-2026", Kind = "Sheet"]}[Data],
+			Encabezados = Table.PromoteHeaders(Hoja, [PromoteAllScalars = true]),
+			NombreLimpio = Table.TransformColumns(
+				Encabezados,
+				{{"INFRACCIONES", each Text.Trim(Text.Clean(_)), type text}}),
+			Unpivot = Table.UnpivotOtherColumns(
+				NombreLimpio, {"INFRACCIONES", "AÑO"}, "MesNombre", "ViolationCount"),
+			Tipos = Table.TransformColumnTypes(
+				Unpivot,
+				{{"AÑO", Int64.Type}, {"MesNombre", type text}, {"ViolationCount", Int64.Type}}),
+			Meses = {"ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+					"JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"},
+			MesNumero = Table.AddColumn(
+				Tipos, "MonthNumber",
+				each List.PositionOf(Meses, Text.Upper(Text.Trim([MesNombre]))) + 1, Int64.Type),
+			Fecha = Table.AddColumn(
+				MesNumero, "MonthStartDate", each #date([AÑO], [MonthNumber], 1), type date),
+			Renombrado = Table.RenameColumns(
+				Fecha, {{"INFRACCIONES", "InfractionNameRaw"}, {"AÑO", "Year"}}),
+			Resultado = Table.SelectColumns(
+				Renombrado,
+				{"InfractionNameRaw", "Year", "MonthNumber", "MonthStartDate", "ViolationCount"})
+		in
+			Resultado
+	lineageTag: dd1f527f-5537-47cf-88eb-553cfb842b2f
+
+expression MapInfraction =
+		let
+			Origen = Csv.Document(
+				File.Contents(pRutaDatos & "reference\MapInfraction.csv"),
+				[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+			Encabezados = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+			Tipos = Table.TransformColumnTypes(
+				Encabezados,
+				{{"InfractionNameRaw", type text}, {"InfractionID", Int64.Type},
+				{"SourceCatalog", type text}, {"MappingConfidence", type text},
+				{"MappingNote", type text}}),
+			Limpio = Table.TransformColumns(
+				Tipos, {{"InfractionNameRaw", each Text.Trim(Text.Clean(_)), type text}})
+		in
+			Limpio
+	lineageTag: 728dbbec-5c4e-4a8a-a005-df4461890363
+
+expression stg_Fallecimientos =
+		let
+			Origen = Excel.Workbook(
+				File.Contents(pRutaDatos & "raw\Fallecimientos-segun-Meses-DIGESETT-2016-2025.xlsx"),
+				null, true),
+			Hoja = Origen{[Item = "Fallecimientos Segun Meses", Kind = "Sheet"]}[Data],
+			Encabezados = Table.PromoteHeaders(Hoja, [PromoteAllScalars = true]),
+			Tipos = Table.TransformColumnTypes(
+				Encabezados,
+				{{"MES", type text}, {"FALLECIDOS", Int64.Type}, {"AÑO", Int64.Type}}),
+			MesLimpio = Table.TransformColumns(
+				Tipos, {{"MES", each Text.Upper(Text.Trim(_)), type text}}),
+			Noviembre = Table.ReplaceValue(
+				MesLimpio, "NOVIEMBRES", "NOVIEMBRE", Replacer.ReplaceValue, {"MES"}),
+			Meses = {"ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+					"JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"},
+			MesNumero = Table.AddColumn(
+				Noviembre, "MonthNumber", each List.PositionOf(Meses, [MES]) + 1, Int64.Type),
+			Fecha = Table.AddColumn(
+				MesNumero, "MonthStartDate", each #date([AÑO], [MonthNumber], 1), type date),
+			Resultado = Table.SelectColumns(
+				Table.RenameColumns(Fecha, {{"FALLECIDOS", "Fatalities"}}),
+				{"MonthStartDate", "Fatalities"})
+		in
+			Resultado
+	lineageTag: 1a71ce6f-3ea8-46d3-877b-0c8816cfb5f6
+
+expression qa_InfraccionesSinMapear =
+		let
+			Unido = Table.NestedJoin(
+				stg_Infracciones, {"InfractionNameRaw"},
+				MapInfraction, {"InfractionNameRaw"},
+				"Map", JoinKind.LeftAnti),
+			Resumen = Table.Group(
+				Unido, {"InfractionNameRaw"},
+				{{"Filas", each Table.RowCount(_), Int64.Type},
+				{"Infracciones", each List.Sum([ViolationCount]), Int64.Type},
+				{"PrimerAño", each List.Min([Year]), Int64.Type},
+				{"UltimoAño", each List.Max([Year]), Int64.Type}})
+		in
+			Resumen
+	lineageTag: 63fee147-d1c3-4042-8391-eb0735499580
+

@@ -1,0 +1,12 @@
+relationship Violations_Date
+	fromColumn: FactTrafficViolations.MonthStartDate
+	toColumn: DimDate.Date
+
+relationship Fatalities_Date
+	fromColumn: FactRoadFatalities.MonthStartDate
+	toColumn: DimDate.Date
+
+relationship Violations_Infraction
+	fromColumn: FactTrafficViolations.InfractionID
+	toColumn: DimInfraction.InfractionID
+

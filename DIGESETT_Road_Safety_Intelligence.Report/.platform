@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "DIGESETT_Road_Safety_Intelligence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "53af405c-e2ea-4f33-9cf6-f180b7b8e1a9"
+  }
+}

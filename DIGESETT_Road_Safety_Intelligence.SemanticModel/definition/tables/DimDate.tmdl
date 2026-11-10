@@ -1,0 +1,192 @@
+table DimDate
+	lineageTag: 961fd21a-9721-4157-9d62-c1dfd458bf24
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isHidden
+		isKey
+		formatString: Short Date
+		lineageTag: 3d9f6b54-1329-4747-8fd2-a2d765fce40e
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: abba9b47-6a1f-41cc-a71d-eed3e236ad60
+		summarizeBy: none
+		sourceColumn: Year
+
+	column MonthNumber
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 69ed49d3-0f4d-4a94-813a-e1a0fbbafe94
+		summarizeBy: none
+		sourceColumn: MonthNumber
+
+	column MonthName
+		dataType: string
+		lineageTag: c4d695d9-4b67-4fb4-91da-a4d15f716343
+		summarizeBy: none
+		sourceColumn: MonthName
+		sortByColumn: MonthNumber
+
+	column MonthNameShort
+		dataType: string
+		lineageTag: 6f13aba9-c3c5-4467-ab4b-ac15a3c3a96c
+		summarizeBy: none
+		sourceColumn: MonthNameShort
+		sortByColumn: MonthNumber
+
+	column QuarterNumber
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 10231ff3-203c-428d-8598-8dfd3eda381a
+		summarizeBy: none
+		sourceColumn: QuarterNumber
+
+	column Quarter
+		dataType: string
+		lineageTag: b33d7d03-7037-4225-bf46-83cc15dcf67c
+		summarizeBy: none
+		sourceColumn: Quarter
+		sortByColumn: QuarterNumber
+
+	column YearQuarter
+		dataType: string
+		lineageTag: 9091744f-41fb-48db-a379-6c0f6c83904d
+		summarizeBy: none
+		sourceColumn: YearQuarter
+
+	column YearMonth
+		dataType: string
+		lineageTag: b5f2e0af-f76f-4436-bfc3-3c0653e2be38
+		summarizeBy: none
+		sourceColumn: YearMonth
+		sortByColumn: YearMonthSort
+
+	column YearMonthSort
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: f86b7587-9945-4fef-a6d1-82359244b769
+		summarizeBy: none
+		sourceColumn: YearMonthSort
+
+	column MonthStartDate
+		dataType: dateTime
+		isHidden
+		formatString: Short Date
+		lineageTag: d748a060-29e0-4b4b-a6ee-67e82eb197ee
+		summarizeBy: none
+		sourceColumn: MonthStartDate
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column MonthIndex
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: afdd9ec0-155b-4afe-9c04-2c149363902d
+		summarizeBy: none
+		sourceColumn: MonthIndex
+
+	column HasViolationData
+		dataType: boolean
+		lineageTag: 2b16e6bd-a404-4f97-856c-d4e24cc7ac66
+		summarizeBy: none
+		sourceColumn: HasViolationData
+
+	column HasFatalityData
+		dataType: boolean
+		lineageTag: 3a1ab2b0-110c-4a8c-a639-cb17a75b592e
+		summarizeBy: none
+		sourceColumn: HasFatalityData
+
+	column IsCompleteViolationYear
+		dataType: boolean
+		lineageTag: f5e46418-f099-462a-8566-a2583bfc764b
+		summarizeBy: none
+		sourceColumn: IsCompleteViolationYear
+
+	column IsCommonPeriod
+		dataType: boolean
+		lineageTag: 61651443-0a4a-4a89-915a-234c569664f7
+		summarizeBy: none
+		sourceColumn: IsCommonPeriod
+
+	column YearLabel
+		dataType: string
+		lineageTag: 7c0dd344-7ae5-4e98-8ae9-3f09e0d55c42
+		summarizeBy: none
+		sourceColumn: YearLabel
+		sortByColumn: Year
+
+	hierarchy Calendario
+		lineageTag: 51869528-d45a-4bc4-a082-6e28deb697ff
+
+		level Year
+			lineageTag: bfbce262-225d-4e16-92cf-98980902c514
+			column: Year
+
+		level Quarter
+			lineageTag: 25126284-33fa-4df8-a4dc-cb69f250b71b
+			column: Quarter
+
+		level MonthName
+			lineageTag: 17fa1b6d-d9ef-47fd-99e0-06fa0aac1523
+			column: MonthName
+
+	partition DimDate = m
+		mode: import
+		source =
+				let
+					MesesConDatos = Table.SelectRows(stg_Infracciones, each [ViolationCount] > 0)[MonthStartDate],
+					MinInf = List.Min(MesesConDatos),
+					MaxInf = List.Max(MesesConDatos),
+					MinFal = List.Min(stg_Fallecimientos[MonthStartDate]),
+					MaxFal = List.Max(stg_Fallecimientos[MonthStartDate]),
+					Inicio = #date(Date.Year(List.Min({MinInf, MinFal})), 1, 1),
+					Fin    = #date(Date.Year(List.Max({MaxInf, MaxFal})), 12, 31),
+					Fechas = List.Dates(Inicio, Duration.Days(Fin - Inicio) + 1, #duration(1, 0, 0, 0)),
+					Base   = Table.TransformColumnTypes(
+								Table.FromList(Fechas, Splitter.SplitByNothing(), {"Date"}),
+								{{"Date", type date}}),
+					MesesLargos = {"Enero","Febrero","Marzo","Abril","Mayo","Junio",
+								"Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"},
+					MesesCortos = {"Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"},
+					Anio      = Table.AddColumn(Base, "Year", each Date.Year([Date]), Int64.Type),
+					MesNum    = Table.AddColumn(Anio, "MonthNumber", each Date.Month([Date]), Int64.Type),
+					MesNombre = Table.AddColumn(MesNum, "MonthName", each MesesLargos{[MonthNumber] - 1}, type text),
+					MesCorto  = Table.AddColumn(MesNombre, "MonthNameShort", each MesesCortos{[MonthNumber] - 1}, type text),
+					TrimNum   = Table.AddColumn(MesCorto, "QuarterNumber", each Date.QuarterOfYear([Date]), Int64.Type),
+					Trim      = Table.AddColumn(TrimNum, "Quarter", each "T" & Text.From([QuarterNumber]), type text),
+					AnioTrim  = Table.AddColumn(Trim, "YearQuarter",
+									each Text.From([Year]) & "-T" & Text.From([QuarterNumber]), type text),
+					AnioMes   = Table.AddColumn(AnioTrim, "YearMonth",
+									each Text.From([Year]) & "-" & Text.PadStart(Text.From([MonthNumber]), 2, "0"), type text),
+					AnioMesSort = Table.AddColumn(AnioMes, "YearMonthSort", each [Year] * 100 + [MonthNumber], Int64.Type),
+					InicioMes = Table.AddColumn(AnioMesSort, "MonthStartDate", each Date.StartOfMonth([Date]), type date),
+					MesIndice = Table.AddColumn(InicioMes, "MonthIndex", each [Year] * 12 + [MonthNumber], Int64.Type),
+					TieneInf = Table.AddColumn(MesIndice, "HasViolationData",
+								each [MonthStartDate] >= MinInf and [MonthStartDate] <= MaxInf, type logical),
+					TieneFal = Table.AddColumn(TieneInf, "HasFatalityData",
+								each [MonthStartDate] >= MinFal and [MonthStartDate] <= MaxFal, type logical),
+					AnioCompleto = Table.AddColumn(TieneFal, "IsCompleteViolationYear",
+								each [Year] >= Date.Year(MinInf)
+										and ([Year] < Date.Year(MaxInf)
+											or ([Year] = Date.Year(MaxInf) and Date.Month(MaxInf) = 12)),
+								type logical),
+					Comun = Table.AddColumn(AnioCompleto, "IsCommonPeriod",
+								each [HasViolationData] and [HasFatalityData], type logical),
+					EtiquetaAnio = Table.AddColumn(Comun, "YearLabel",
+								each if [Year] = Date.Year(MaxInf) and Date.Month(MaxInf) < 12
+										then Text.From([Year]) & "*" else Text.From([Year]), type text)
+				in
+					EtiquetaAnio
+

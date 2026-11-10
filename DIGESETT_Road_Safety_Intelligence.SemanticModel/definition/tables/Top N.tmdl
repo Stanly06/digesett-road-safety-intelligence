@@ -1,0 +1,14 @@
+table 'Top N'
+	lineageTag: 660a605c-15c2-4e21-a900-642207e9b0b8
+
+	column N
+		dataType: int64
+		formatString: 0
+		lineageTag: 2db3059e-7e20-426d-9f96-5898fcb719bd
+		summarizeBy: none
+		sourceColumn: N
+
+	partition 'Top N' = m
+		mode: import
+		source = #table(type table [N = Int64.Type], {{3}, {5}, {10}, {15}, {20}})
+

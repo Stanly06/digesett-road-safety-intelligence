@@ -1,0 +1,419 @@
+createOrReplace
+
+	expression pRutaDatos = "C:\Users\stanl\Documents\DIGESETT\data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+
+	expression stg_Infracciones =
+			let
+				Origen = Excel.Workbook(
+					File.Contents(pRutaDatos & "raw\Infracciones-de-Transito-DIGESETT-2018-2026.xlsx"),
+					null, true),
+				Hoja = Origen{[Item = "INFRACCIONES 2018-2026", Kind = "Sheet"]}[Data],
+				Encabezados = Table.PromoteHeaders(Hoja, [PromoteAllScalars = true]),
+				NombreLimpio = Table.TransformColumns(
+					Encabezados,
+					{{"INFRACCIONES", each Text.Trim(Text.Clean(_)), type text}}),
+				Unpivot = Table.UnpivotOtherColumns(
+					NombreLimpio, {"INFRACCIONES", "AÑO"}, "MesNombre", "ViolationCount"),
+				Tipos = Table.TransformColumnTypes(
+					Unpivot,
+					{{"AÑO", Int64.Type}, {"MesNombre", type text}, {"ViolationCount", Int64.Type}}),
+				Meses = {"ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+						"JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"},
+				MesNumero = Table.AddColumn(
+					Tipos, "MonthNumber",
+					each List.PositionOf(Meses, Text.Upper(Text.Trim([MesNombre]))) + 1, Int64.Type),
+				Fecha = Table.AddColumn(
+					MesNumero, "MonthStartDate", each #date([AÑO], [MonthNumber], 1), type date),
+				Renombrado = Table.RenameColumns(
+					Fecha, {{"INFRACCIONES", "InfractionNameRaw"}, {"AÑO", "Year"}}),
+				Resultado = Table.SelectColumns(
+					Renombrado,
+					{"InfractionNameRaw", "Year", "MonthNumber", "MonthStartDate", "ViolationCount"})
+			in
+				Resultado
+
+	expression MapInfraction =
+			let
+				Origen = Csv.Document(
+					File.Contents(pRutaDatos & "reference\MapInfraction.csv"),
+					[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				Encabezados = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+				Tipos = Table.TransformColumnTypes(
+					Encabezados,
+					{{"InfractionNameRaw", type text}, {"InfractionID", Int64.Type},
+					{"SourceCatalog", type text}, {"MappingConfidence", type text},
+					{"MappingNote", type text}}),
+				Limpio = Table.TransformColumns(
+					Tipos, {{"InfractionNameRaw", each Text.Trim(Text.Clean(_)), type text}})
+			in
+				Limpio
+
+	expression stg_Fallecimientos =
+			let
+				Origen = Excel.Workbook(
+					File.Contents(pRutaDatos & "raw\Fallecimientos-segun-Meses-DIGESETT-2016-2025.xlsx"),
+					null, true),
+				Hoja = Origen{[Item = "Fallecimientos Segun Meses", Kind = "Sheet"]}[Data],
+				Encabezados = Table.PromoteHeaders(Hoja, [PromoteAllScalars = true]),
+				Tipos = Table.TransformColumnTypes(
+					Encabezados,
+					{{"MES", type text}, {"FALLECIDOS", Int64.Type}, {"AÑO", Int64.Type}}),
+				MesLimpio = Table.TransformColumns(
+					Tipos, {{"MES", each Text.Upper(Text.Trim(_)), type text}}),
+				Noviembre = Table.ReplaceValue(
+					MesLimpio, "NOVIEMBRES", "NOVIEMBRE", Replacer.ReplaceValue, {"MES"}),
+				Meses = {"ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+						"JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"},
+				MesNumero = Table.AddColumn(
+					Noviembre, "MonthNumber", each List.PositionOf(Meses, [MES]) + 1, Int64.Type),
+				Fecha = Table.AddColumn(
+					MesNumero, "MonthStartDate", each #date([AÑO], [MonthNumber], 1), type date),
+				Resultado = Table.SelectColumns(
+					Table.RenameColumns(Fecha, {{"FALLECIDOS", "Fatalities"}}),
+					{"MonthStartDate", "Fatalities"})
+			in
+				Resultado
+
+	expression qa_InfraccionesSinMapear =
+			let
+				Unido = Table.NestedJoin(
+					stg_Infracciones, {"InfractionNameRaw"},
+					MapInfraction, {"InfractionNameRaw"},
+					"Map", JoinKind.LeftAnti),
+				Resumen = Table.Group(
+					Unido, {"InfractionNameRaw"},
+					{{"Filas", each Table.RowCount(_), Int64.Type},
+					{"Infracciones", each List.Sum([ViolationCount]), Int64.Type},
+					{"PrimerAño", each List.Min([Year]), Int64.Type},
+					{"UltimoAño", each List.Max([Year]), Int64.Type}})
+			in
+				Resumen
+
+	table _Measures
+
+		measure 'Total Traffic Violations' = SUM ( FactTrafficViolations[ViolationCount] )
+			formatString: #,0
+			displayFolder: 01 Base
+
+		measure 'Total Road Fatalities' = SUM ( FactRoadFatalities[Fatalities] )
+			formatString: #,0
+			displayFolder: 01 Base
+
+		column Placeholder
+			dataType: string
+			isHidden
+			summarizeBy: none
+			sourceColumn: Placeholder
+
+		partition _Measures = m
+			mode: import
+			source = #table(type table [Placeholder = text], {})
+
+	table DimDate
+		dataCategory: Time
+
+		hierarchy Calendario
+			level Year
+				column: Year
+			level Quarter
+				column: Quarter
+			level MonthName
+				column: MonthName
+
+		column Date
+			dataType: dateTime
+			isKey
+			isHidden
+			formatString: Short Date
+			summarizeBy: none
+			sourceColumn: Date
+
+		column Year
+			dataType: int64
+			formatString: 0
+			summarizeBy: none
+			sourceColumn: Year
+
+		column MonthNumber
+			dataType: int64
+			isHidden
+			formatString: 0
+			summarizeBy: none
+			sourceColumn: MonthNumber
+
+		column MonthName
+			dataType: string
+			summarizeBy: none
+			sourceColumn: MonthName
+			sortByColumn: MonthNumber
+
+		column MonthNameShort
+			dataType: string
+			summarizeBy: none
+			sourceColumn: MonthNameShort
+			sortByColumn: MonthNumber
+
+		column QuarterNumber
+			dataType: int64
+			isHidden
+			formatString: 0
+			summarizeBy: none
+			sourceColumn: QuarterNumber
+
+		column Quarter
+			dataType: string
+			summarizeBy: none
+			sourceColumn: Quarter
+			sortByColumn: QuarterNumber
+
+		column YearQuarter
+			dataType: string
+			summarizeBy: none
+			sourceColumn: YearQuarter
+
+		column YearMonth
+			dataType: string
+			summarizeBy: none
+			sourceColumn: YearMonth
+			sortByColumn: YearMonthSort
+
+		column YearMonthSort
+			dataType: int64
+			isHidden
+			formatString: 0
+			summarizeBy: none
+			sourceColumn: YearMonthSort
+
+		column MonthStartDate
+			dataType: dateTime
+			isHidden
+			formatString: Short Date
+			summarizeBy: none
+			sourceColumn: MonthStartDate
+
+		column MonthIndex
+			dataType: int64
+			isHidden
+			formatString: 0
+			summarizeBy: none
+			sourceColumn: MonthIndex
+
+		column HasViolationData
+			dataType: boolean
+			summarizeBy: none
+			sourceColumn: HasViolationData
+
+		column HasFatalityData
+			dataType: boolean
+			summarizeBy: none
+			sourceColumn: HasFatalityData
+
+		column IsCompleteViolationYear
+			dataType: boolean
+			summarizeBy: none
+			sourceColumn: IsCompleteViolationYear
+
+		column IsCommonPeriod
+			dataType: boolean
+			summarizeBy: none
+			sourceColumn: IsCommonPeriod
+
+		column YearLabel
+			dataType: string
+			summarizeBy: none
+			sourceColumn: YearLabel
+			sortByColumn: Year
+
+		partition DimDate = m
+			mode: import
+			source =
+					let
+						MesesConDatos = Table.SelectRows(stg_Infracciones, each [ViolationCount] > 0)[MonthStartDate],
+						MinInf = List.Min(MesesConDatos),
+						MaxInf = List.Max(MesesConDatos),
+						MinFal = List.Min(stg_Fallecimientos[MonthStartDate]),
+						MaxFal = List.Max(stg_Fallecimientos[MonthStartDate]),
+						Inicio = #date(Date.Year(List.Min({MinInf, MinFal})), 1, 1),
+						Fin    = #date(Date.Year(List.Max({MaxInf, MaxFal})), 12, 31),
+						Fechas = List.Dates(Inicio, Duration.Days(Fin - Inicio) + 1, #duration(1, 0, 0, 0)),
+						Base   = Table.TransformColumnTypes(
+									Table.FromList(Fechas, Splitter.SplitByNothing(), {"Date"}),
+									{{"Date", type date}}),
+						MesesLargos = {"Enero","Febrero","Marzo","Abril","Mayo","Junio",
+									"Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"},
+						MesesCortos = {"Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"},
+						Anio      = Table.AddColumn(Base, "Year", each Date.Year([Date]), Int64.Type),
+						MesNum    = Table.AddColumn(Anio, "MonthNumber", each Date.Month([Date]), Int64.Type),
+						MesNombre = Table.AddColumn(MesNum, "MonthName", each MesesLargos{[MonthNumber] - 1}, type text),
+						MesCorto  = Table.AddColumn(MesNombre, "MonthNameShort", each MesesCortos{[MonthNumber] - 1}, type text),
+						TrimNum   = Table.AddColumn(MesCorto, "QuarterNumber", each Date.QuarterOfYear([Date]), Int64.Type),
+						Trim      = Table.AddColumn(TrimNum, "Quarter", each "T" & Text.From([QuarterNumber]), type text),
+						AnioTrim  = Table.AddColumn(Trim, "YearQuarter",
+										each Text.From([Year]) & "-T" & Text.From([QuarterNumber]), type text),
+						AnioMes   = Table.AddColumn(AnioTrim, "YearMonth",
+										each Text.From([Year]) & "-" & Text.PadStart(Text.From([MonthNumber]), 2, "0"), type text),
+						AnioMesSort = Table.AddColumn(AnioMes, "YearMonthSort", each [Year] * 100 + [MonthNumber], Int64.Type),
+						InicioMes = Table.AddColumn(AnioMesSort, "MonthStartDate", each Date.StartOfMonth([Date]), type date),
+						MesIndice = Table.AddColumn(InicioMes, "MonthIndex", each [Year] * 12 + [MonthNumber], Int64.Type),
+						TieneInf = Table.AddColumn(MesIndice, "HasViolationData",
+									each [MonthStartDate] >= MinInf and [MonthStartDate] <= MaxInf, type logical),
+						TieneFal = Table.AddColumn(TieneInf, "HasFatalityData",
+									each [MonthStartDate] >= MinFal and [MonthStartDate] <= MaxFal, type logical),
+						AnioCompleto = Table.AddColumn(TieneFal, "IsCompleteViolationYear",
+									each [Year] >= Date.Year(MinInf)
+											and ([Year] < Date.Year(MaxInf)
+												or ([Year] = Date.Year(MaxInf) and Date.Month(MaxInf) = 12)),
+									type logical),
+						Comun = Table.AddColumn(AnioCompleto, "IsCommonPeriod",
+									each [HasViolationData] and [HasFatalityData], type logical),
+						EtiquetaAnio = Table.AddColumn(Comun, "YearLabel",
+									each if [Year] = Date.Year(MaxInf) and Date.Month(MaxInf) < 12
+											then Text.From([Year]) & "*" else Text.From([Year]), type text)
+					in
+						EtiquetaAnio
+
+	table DimInfraction
+
+		hierarchy Infracción
+			level InfractionCategory
+				column: InfractionCategory
+			level InfractionType
+				column: InfractionType
+
+		column InfractionID
+			dataType: int64
+			isKey
+			isHidden
+			formatString: 0
+			summarizeBy: none
+			sourceColumn: InfractionID
+
+		column InfractionType
+			dataType: string
+			summarizeBy: none
+			sourceColumn: InfractionType
+
+		column LegalReference
+			dataType: string
+			summarizeBy: none
+			sourceColumn: LegalReference
+
+		column InfractionCategory
+			dataType: string
+			summarizeBy: none
+			sourceColumn: InfractionCategory
+
+		column CatalogStatus
+			dataType: string
+			summarizeBy: none
+			sourceColumn: CatalogStatus
+
+		partition DimInfraction = m
+			mode: import
+			source =
+					let
+						Origen = Csv.Document(
+							File.Contents(pRutaDatos & "reference\DimInfraction.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+						Encabezados = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+						Tipos = Table.TransformColumnTypes(
+							Encabezados,
+							{{"InfractionID", Int64.Type}, {"InfractionType", type text},
+							{"LegalReference", type text}, {"InfractionCategory", type text},
+							{"CatalogStatus", type text}}),
+						RefNula = Table.ReplaceValue(
+							Tipos, "", null, Replacer.ReplaceValue, {"LegalReference"})
+					in
+						RefNula
+
+	table FactTrafficViolations
+
+		column MonthStartDate
+			dataType: dateTime
+			isHidden
+			formatString: Short Date
+			summarizeBy: none
+			sourceColumn: MonthStartDate
+
+		column InfractionID
+			dataType: int64
+			isHidden
+			formatString: 0
+			summarizeBy: none
+			sourceColumn: InfractionID
+
+		column ViolationCount
+			dataType: int64
+			isHidden
+			formatString: #,0
+			summarizeBy: sum
+			sourceColumn: ViolationCount
+
+		partition FactTrafficViolations = m
+			mode: import
+			source =
+					let
+						Origen = stg_Infracciones,
+						Unido = Table.NestedJoin(
+							Origen, {"InfractionNameRaw"},
+							MapInfraction, {"InfractionNameRaw"},
+							"Map", JoinKind.LeftOuter),
+						ConID = Table.ExpandTableColumn(Unido, "Map", {"InfractionID"}, {"InfractionID"}),
+						UltimoMes = List.Max(
+							Table.SelectRows(ConID, each [ViolationCount] > 0)[MonthStartDate]),
+						SinFuturo = Table.SelectRows(ConID, each [MonthStartDate] <= UltimoMes),
+						EneMay2019 = Table.SelectRows(SinFuturo, each [Year] = 2019 and [MonthNumber] <= 5),
+						SumaPorTipo = Table.Group(
+							EneMay2019, {"InfractionID"},
+							{{"Suma", each List.Sum([ViolationCount]), Int64.Type}}),
+						TiposNoAplica = List.Buffer(
+							Table.SelectRows(SumaPorTipo, each [Suma] = 0)[InfractionID]),
+						SinNoAplica = Table.SelectRows(
+							SinFuturo,
+							each not ([Year] = 2019 and [MonthNumber] <= 5
+									and List.Contains(TiposNoAplica, [InfractionID]))),
+						Resultado = Table.SelectColumns(
+							SinNoAplica, {"MonthStartDate", "InfractionID", "ViolationCount"}),
+						Tipos = Table.TransformColumnTypes(
+							Resultado,
+							{{"MonthStartDate", type date}, {"InfractionID", Int64.Type},
+							{"ViolationCount", Int64.Type}})
+					in
+						Tipos
+
+	table FactRoadFatalities
+
+		column MonthStartDate
+			dataType: dateTime
+			isHidden
+			formatString: Short Date
+			summarizeBy: none
+			sourceColumn: MonthStartDate
+
+		column Fatalities
+			dataType: int64
+			isHidden
+			formatString: #,0
+			summarizeBy: sum
+			sourceColumn: Fatalities
+
+		partition FactRoadFatalities = m
+			mode: import
+			source =
+					let
+						Origen = stg_Fallecimientos
+					in
+						Origen
+
+	relationship Violations_Date
+		fromColumn: FactTrafficViolations.MonthStartDate
+		toColumn: DimDate.Date
+
+	relationship Fatalities_Date
+		fromColumn: FactRoadFatalities.MonthStartDate
+		toColumn: DimDate.Date
+
+	relationship Violations_Infraction
+		fromColumn: FactTrafficViolations.InfractionID
+		toColumn: DimInfraction.InfractionID
+

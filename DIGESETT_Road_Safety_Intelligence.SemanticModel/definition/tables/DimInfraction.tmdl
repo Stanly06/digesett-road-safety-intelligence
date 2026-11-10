@@ -1,0 +1,65 @@
+table DimInfraction
+	lineageTag: 2757bdff-8a19-4a42-afab-1a33bd245d61
+
+	column InfractionID
+		dataType: int64
+		isHidden
+		isKey
+		formatString: 0
+		lineageTag: bf5f630c-cb74-4e6b-aa11-e8fb6e2ed475
+		summarizeBy: none
+		sourceColumn: InfractionID
+
+	column InfractionType
+		dataType: string
+		lineageTag: 09917b5b-168c-4ef8-9a66-2359a3ab4a40
+		summarizeBy: none
+		sourceColumn: InfractionType
+
+	column LegalReference
+		dataType: string
+		lineageTag: 58c09239-0c09-4201-9187-925e95af7a93
+		summarizeBy: none
+		sourceColumn: LegalReference
+
+	column InfractionCategory
+		dataType: string
+		lineageTag: 98a06666-5aea-43d9-b8c6-e2f410442cf2
+		summarizeBy: none
+		sourceColumn: InfractionCategory
+
+	column CatalogStatus
+		dataType: string
+		lineageTag: 5966eac7-072b-48cf-840c-95ceb01e9de4
+		summarizeBy: none
+		sourceColumn: CatalogStatus
+
+	hierarchy Infracción
+		lineageTag: c419d8f6-5166-4391-ab62-e240f4ebc060
+
+		level InfractionCategory
+			lineageTag: 362e597c-48c2-4940-8589-1eb27b4b4017
+			column: InfractionCategory
+
+		level InfractionType
+			lineageTag: e109e3f2-9d33-4f8e-9ecb-b1fadbe213a0
+			column: InfractionType
+
+	partition DimInfraction = m
+		mode: import
+		source =
+				let
+					Origen = Csv.Document(
+						File.Contents(pRutaDatos & "reference\DimInfraction.csv"),
+						[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+					Encabezados = Table.PromoteHeaders(Origen, [PromoteAllScalars = true]),
+					Tipos = Table.TransformColumnTypes(
+						Encabezados,
+						{{"InfractionID", Int64.Type}, {"InfractionType", type text},
+						{"LegalReference", type text}, {"InfractionCategory", type text},
+						{"CatalogStatus", type text}}),
+					RefNula = Table.ReplaceValue(
+						Tipos, "", null, Replacer.ReplaceValue, {"LegalReference"})
+				in
+					RefNula
+

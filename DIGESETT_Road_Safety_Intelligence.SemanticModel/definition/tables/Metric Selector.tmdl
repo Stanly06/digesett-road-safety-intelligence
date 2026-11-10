@@ -1,0 +1,22 @@
+table 'Metric Selector'
+	lineageTag: a4771d6b-5c2a-472b-8527-8314f3c2a09c
+
+	column Metric
+		dataType: string
+		lineageTag: 3924b87c-e910-425b-ba90-ff8299cf849b
+		summarizeBy: none
+		sourceColumn: Metric
+		sortByColumn: MetricOrder
+
+	column MetricOrder
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 79640fc0-ed36-4722-a65d-5d73d60092af
+		summarizeBy: none
+		sourceColumn: MetricOrder
+
+	partition 'Metric Selector' = m
+		mode: import
+		source = #table(type table [Metric = text, MetricOrder = Int64.Type], {{"Infracciones", 1}, {"Promedio mensual", 2}, {"Acumulado YTD", 3}, {"Variación interanual %", 4}, {"Participación %", 5}})
+

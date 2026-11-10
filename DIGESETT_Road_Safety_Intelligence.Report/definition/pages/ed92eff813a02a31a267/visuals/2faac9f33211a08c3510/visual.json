@@ -1,0 +1,134 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "name": "2faac9f33211a08c3510",
+  "position": {
+    "x": 1376,
+    "y": 304,
+    "z": 16000,
+    "height": 360,
+    "width": 520,
+    "tabOrder": 16000
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Cómo leer esta página",
+                    "textStyle": {
+                      "fontWeight": "bold",
+                      "fontSize": "13pt",
+                      "color": "#FFC72C"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Las infracciones registradas miden también la intensidad de la fiscalización, no solo la conducta de los conductores.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#F4F5F6"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Los fallecimientos son totales nacionales por mes: la fuente no los desglosa por tipo de infracción, provincia ni tipo de vehículo.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#F4F5F6"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Ver ambas series juntas no implica causalidad.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#F4F5F6"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• No se calculan tasas: faltan denominadores (parque vehicular, población, kilómetros recorridos).",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#F4F5F6"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Datos que ayudarían: accidentes y lesionados por provincia, tipo de vehículo, hora y vía; parque vehicular por año.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#A7AEB6"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

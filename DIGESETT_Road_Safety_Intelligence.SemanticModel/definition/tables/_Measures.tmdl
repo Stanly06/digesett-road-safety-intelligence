@@ -1,0 +1,709 @@
+table _Measures
+	lineageTag: caa2110c-0246-47e4-83b5-31f3aa2edb16
+
+	/// Infracciones registradas. Medida base: todas las demás parten de esta.
+	measure 'Total Traffic Violations' = SUM ( FactTrafficViolations[ViolationCount] )
+		formatString: #,0
+		displayFolder: 01 Base
+		lineageTag: 01f53381-ffdc-437a-9082-8bba9608731b
+
+	/// Fallecimientos registrados (total nacional mensual). No se desglosa por tipo de infracción.
+	measure 'Total Road Fatalities' = SUM ( FactRoadFatalities[Fatalities] )
+		formatString: #,0
+		displayFolder: 05 Road Safety
+		lineageTag: 545e4e20-f870-4207-8592-eac33448a9e4
+
+	/// Tipos de infracción con al menos un registro en el contexto actual.
+	measure 'Number of Infraction Types' =
+			COUNTROWS (
+				FILTER ( VALUES ( DimInfraction[InfractionID] ), [Total Traffic Violations] > 0 )
+			)
+		formatString: #,0
+		displayFolder: 01 Base
+		lineageTag: 4f00a168-451b-4254-a6fb-73044fd1bd78
+
+	/// Meses que tienen filas en la tabla de hechos. Ausencia de fila = sin dato; fila con 0 = cero real.
+	measure 'Months with Data' = COUNTROWS ( SUMMARIZE ( FactTrafficViolations, DimDate[MonthIndex] ) )
+		formatString: #,0
+		displayFolder: 01 Base
+		lineageTag: 89c06a8b-4c42-4a2a-86e9-1c8b24bf8128
+
+	/// Promedio por mes, dividiendo solo entre los meses que tienen datos.
+	measure 'Average Monthly Violations' = DIVIDE ( [Total Traffic Violations], [Months with Data] )
+		formatString: #,0
+		displayFolder: 01 Base
+		lineageTag: 5e5a6194-36f2-4509-9d48-a1a9153dcb82
+
+	/// Promedio anual usando solo años completos (excluye el año parcial).
+	measure 'Average Annual Violations' =
+			AVERAGEX (
+				CALCULATETABLE (
+					VALUES ( DimDate[Year] ),
+					KEEPFILTERS ( DimDate[IsCompleteViolationYear] = TRUE () )
+				),
+				[Total Traffic Violations]
+			)
+		formatString: #,0
+		displayFolder: 01 Base
+		lineageTag: 23ab7510-25e2-4a14-9f16-75100ec4f192
+
+	/// Valor del mes con más infracciones dentro del contexto.
+	measure 'Maximum Monthly Violations' = MAXX ( SUMMARIZE ( FactTrafficViolations, DimDate[MonthIndex] ), [Total Traffic Violations] )
+		formatString: #,0
+		displayFolder: 01 Base
+		lineageTag: 0ef245d1-473c-4530-b651-95bcbed470f3
+
+	/// Valor del mes con menos infracciones (solo meses con datos).
+	measure 'Minimum Monthly Violations' = MINX ( SUMMARIZE ( FactTrafficViolations, DimDate[MonthIndex] ), [Total Traffic Violations] )
+		formatString: #,0
+		displayFolder: 01 Base
+		lineageTag: 67af910b-5d18-4785-bab0-695102902950
+
+	/// Índice del último mes con infracciones publicadas, ignorando todos los filtros.
+	measure 'Last Data Month Index' =
+			CALCULATE (
+				MAX ( DimDate[MonthIndex] ),
+				REMOVEFILTERS (),
+				DimDate[HasViolationData] = TRUE ()
+			)
+		formatString: 0
+		isHidden
+		displayFolder: 01 Base
+		lineageTag: 26dce0ca-aec9-4e87-981a-d3b339e62104
+
+	/// Acumulado del año hasta el período en contexto. En blanco para meses aún no publicados.
+	measure 'Total Violations YTD' =
+			VAR LastIdx = [Last Data Month Index]
+			RETURN
+				IF (
+					MIN ( DimDate[MonthIndex] ) <= LastIdx,
+					CALCULATE ( [Total Traffic Violations], DATESYTD ( DimDate[Date] ) )
+				)
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 892443de-8b9d-4ef3-982f-52bad14f8426
+
+	/// Acumulado del año anterior hasta el mismo mes. Si el año actual es parcial, corta el año anterior en el mismo mes.
+	measure 'Total Violations YTD PY' =
+			VAR LastIdx = [Last Data Month Index]
+			VAR EndIdx = MIN ( MAX ( DimDate[MonthIndex] ), LastIdx )
+			VAR StartIdx = MAX ( DimDate[Year] ) * 12 + 1
+			RETURN
+				IF (
+					MIN ( DimDate[MonthIndex] ) <= LastIdx,
+					CALCULATE (
+						[Total Traffic Violations],
+						REMOVEFILTERS ( DimDate ),
+						DimDate[MonthIndex] >= StartIdx - 12
+							&& DimDate[MonthIndex] <= EndIdx - 12
+					)
+				)
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: f16a414a-c0ec-413b-9dd0-13dad32ed457
+
+	/// Variación del acumulado anual frente al mismo tramo del año anterior.
+	measure 'YTD Growth %' =
+			VAR Cur = [Total Violations YTD]
+			VAR Prev = [Total Violations YTD PY]
+			RETURN
+				IF ( NOT ISBLANK ( Cur ) && NOT ISBLANK ( Prev ), DIVIDE ( Cur - Prev, Prev ) )
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 02 Time Intelligence
+		lineageTag: 215072a3-0623-4ae5-b7de-2deccba0fed8
+
+	/// Mismo período del año anterior, sin ajustar (año completo). Usar como referencia, no para variaciones.
+	measure 'Total Violations Previous Year' = CALCULATE ( [Total Traffic Violations], SAMEPERIODLASTYEAR ( DimDate[Date] ) )
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: adc7f6a6-710d-45bf-a854-8a0d5ebf4e4b
+
+	/// Año anterior limitado a los mismos meses que tienen datos hoy. Devuelve blanco si ambos períodos no tienen la misma cantidad de meses con datos.
+	measure 'Violations PY Comparable' =
+			VAR LastIdx = [Last Data Month Index]
+			VAR CurMonths =
+				FILTER ( VALUES ( DimDate[MonthIndex] ), DimDate[MonthIndex] <= LastIdx )
+			VAR PYMonths =
+				SELECTCOLUMNS ( CurMonths, "MonthIndex", DimDate[MonthIndex] - 12 )
+			VAR MonthsCur = [Months with Data]
+			VAR MonthsPY =
+				CALCULATE (
+					[Months with Data],
+					REMOVEFILTERS ( DimDate ),
+					TREATAS ( PYMonths, DimDate[MonthIndex] )
+				)
+			VAR ValuePY =
+				CALCULATE (
+					[Total Traffic Violations],
+					REMOVEFILTERS ( DimDate ),
+					TREATAS ( PYMonths, DimDate[MonthIndex] )
+				)
+			RETURN
+				IF ( MonthsCur > 0 && MonthsCur = MonthsPY, ValuePY )
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 046abfe6-3003-440d-8aa2-9afcc72629da
+
+	/// Diferencia frente al mismo período comparable del año anterior.
+	measure 'YoY Absolute Change' =
+			VAR Cur = [Total Traffic Violations]
+			VAR Prev = [Violations PY Comparable]
+			RETURN
+				IF ( NOT ISBLANK ( Cur ) && NOT ISBLANK ( Prev ), Cur - Prev )
+		formatString: +#,0;-#,0;0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 120d3870-39ce-49a7-b49b-b360d454d38f
+
+	/// Variación porcentual interanual sobre períodos comparables.
+	measure 'YoY Growth %' =
+			VAR Cur = [Total Traffic Violations]
+			VAR Prev = [Violations PY Comparable]
+			RETURN
+				IF ( NOT ISBLANK ( Cur ) && NOT ISBLANK ( Prev ), DIVIDE ( Cur - Prev, Prev ) )
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 02 Time Intelligence
+		lineageTag: 9a22801c-c0a1-4aed-90bc-9a3bfe1402a2
+
+	/// Mes inmediatamente anterior. Solo se evalúa cuando hay un único mes en contexto.
+	measure 'Violations Previous Month' =
+			VAR CurIdx = MAX ( DimDate[MonthIndex] )
+			RETURN
+				IF (
+					HASONEVALUE ( DimDate[MonthIndex] ),
+					CALCULATE (
+						[Total Traffic Violations],
+						REMOVEFILTERS ( DimDate ),
+						DimDate[MonthIndex] = CurIdx - 1
+					)
+				)
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 8f1ec406-9af9-428d-9ec7-f54d6f950606
+
+	/// Diferencia frente al mes anterior.
+	measure 'MoM Absolute Change' =
+			VAR Cur = [Total Traffic Violations]
+			VAR Prev = [Violations Previous Month]
+			RETURN
+				IF ( NOT ISBLANK ( Cur ) && NOT ISBLANK ( Prev ), Cur - Prev )
+		formatString: +#,0;-#,0;0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 8b8f0884-243e-42df-86cb-bdba8bde7bf0
+
+	/// Variación porcentual frente al mes anterior.
+	measure 'MoM Growth %' =
+			VAR Cur = [Total Traffic Violations]
+			VAR Prev = [Violations Previous Month]
+			RETURN
+				IF ( NOT ISBLANK ( Cur ) && NOT ISBLANK ( Prev ), DIVIDE ( Cur - Prev, Prev ) )
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 02 Time Intelligence
+		lineageTag: ee5629f6-fb76-4de3-9033-323c3eb3c602
+
+	/// Suma móvil de 3 meses. En blanco si la ventana no tiene 3 meses con datos.
+	measure 'Rolling 3M Violations' =
+			VAR CurIdx = MAX ( DimDate[MonthIndex] )
+			VAR MonthsInWindow =
+				CALCULATE (
+					[Months with Data],
+					REMOVEFILTERS ( DimDate ),
+					DimDate[MonthIndex] > CurIdx - 3
+						&& DimDate[MonthIndex] <= CurIdx
+				)
+			RETURN
+				IF (
+					MonthsInWindow = 3 && NOT ISBLANK ( [Total Traffic Violations] ),
+					CALCULATE (
+						[Total Traffic Violations],
+						REMOVEFILTERS ( DimDate ),
+						DimDate[MonthIndex] > CurIdx - 3
+							&& DimDate[MonthIndex] <= CurIdx
+					)
+				)
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 3f43c550-ee66-4e15-9b92-032e6def0f19
+
+	/// Suma móvil de 6 meses. En blanco si la ventana no tiene 6 meses con datos.
+	measure 'Rolling 6M Violations' =
+			VAR CurIdx = MAX ( DimDate[MonthIndex] )
+			VAR MonthsInWindow =
+				CALCULATE (
+					[Months with Data],
+					REMOVEFILTERS ( DimDate ),
+					DimDate[MonthIndex] > CurIdx - 6
+						&& DimDate[MonthIndex] <= CurIdx
+				)
+			RETURN
+				IF (
+					MonthsInWindow = 6 && NOT ISBLANK ( [Total Traffic Violations] ),
+					CALCULATE (
+						[Total Traffic Violations],
+						REMOVEFILTERS ( DimDate ),
+						DimDate[MonthIndex] > CurIdx - 6
+							&& DimDate[MonthIndex] <= CurIdx
+					)
+				)
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: c35360f6-40c4-4fe6-9496-6d7a61c55c18
+
+	/// Suma móvil de 12 meses. En blanco si la ventana no tiene 12 meses con datos.
+	measure 'Rolling 12M Violations' =
+			VAR CurIdx = MAX ( DimDate[MonthIndex] )
+			VAR MonthsInWindow =
+				CALCULATE (
+					[Months with Data],
+					REMOVEFILTERS ( DimDate ),
+					DimDate[MonthIndex] > CurIdx - 12
+						&& DimDate[MonthIndex] <= CurIdx
+				)
+			RETURN
+				IF (
+					MonthsInWindow = 12 && NOT ISBLANK ( [Total Traffic Violations] ),
+					CALCULATE (
+						[Total Traffic Violations],
+						REMOVEFILTERS ( DimDate ),
+						DimDate[MonthIndex] > CurIdx - 12
+							&& DimDate[MonthIndex] <= CurIdx
+					)
+				)
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 5ecfa49c-7887-4467-b43b-795ee3e5ec1f
+
+	/// Media móvil de 3 meses.
+	measure 'Rolling 3M Average' = DIVIDE ( [Rolling 3M Violations], 3 )
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: bc485683-f16b-4ce0-9e38-ab1953e0d7fb
+
+	/// Media móvil de 12 meses: suaviza la estacionalidad.
+	measure 'Rolling 12M Average' = DIVIDE ( [Rolling 12M Violations], 12 )
+		formatString: #,0
+		displayFolder: 02 Time Intelligence
+		lineageTag: 8bafcc16-396a-4121-a66d-cd6accdb5ad4
+
+	/// Peso del período en contexto sobre todos los años seleccionados.
+	measure 'Annual Share %' =
+			DIVIDE (
+				[Total Traffic Violations],
+				CALCULATE ( [Total Traffic Violations], ALLSELECTED ( DimDate ) )
+			)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 02 Time Intelligence
+		lineageTag: 1e90a82a-5fbf-4c4d-ad00-27871e75038a
+
+	/// Peso del mes dentro de su año.
+	measure 'Monthly Share %' =
+			DIVIDE (
+				[Total Traffic Violations],
+				CALCULATE (
+					[Total Traffic Violations],
+					REMOVEFILTERS ( DimDate ),
+					VALUES ( DimDate[Year] )
+				)
+			)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 02 Time Intelligence
+		lineageTag: a440004f-afb4-4133-9df2-618a1ac82576
+
+	/// Participación sobre el total de las infracciones seleccionadas.
+	measure 'Infraction Share %' =
+			DIVIDE (
+				[Total Traffic Violations],
+				CALCULATE ( [Total Traffic Violations], ALLSELECTED ( DimInfraction ) )
+			)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 6fd135a4-9022-4c54-9536-a7f93306d82a
+
+	/// Posición del tipo de infracción respetando los filtros del usuario.
+	measure 'Infraction Ranking' =
+			IF (
+				ISINSCOPE ( DimInfraction[InfractionType] )
+					&& NOT ISBLANK ( [Total Traffic Violations] ),
+				RANKX (
+					ALLSELECTED ( DimInfraction[InfractionType] ),
+					[Total Traffic Violations],
+					,
+					DESC,
+					DENSE
+				)
+			)
+		formatString: 0
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 111c7839-9e11-43c4-b63d-7b1a027ddca9
+
+	/// Posición de la categoría respetando los filtros del usuario.
+	measure 'Category Ranking' =
+			IF (
+				ISINSCOPE ( DimInfraction[InfractionCategory] )
+					&& NOT ISBLANK ( [Total Traffic Violations] ),
+				RANKX (
+					ALLSELECTED ( DimInfraction[InfractionCategory] ),
+					[Total Traffic Violations],
+					,
+					DESC,
+					DENSE
+				)
+			)
+		formatString: 0
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 9c45c72c-0d6d-4c53-bd82-af75b1be9990
+
+	/// Participación acumulada ordenando de mayor a menor (línea del Pareto).
+	measure 'Cumulative Infraction Share %' =
+			VAR Cur = [Total Traffic Violations]
+			VAR AllTypes =
+				ADDCOLUMNS (
+					ALLSELECTED ( DimInfraction[InfractionType] ),
+					"@Violations", [Total Traffic Violations]
+				)
+			VAR Cumulative =
+				SUMX ( FILTER ( AllTypes, [@Violations] >= Cur ), [@Violations] )
+			RETURN
+				IF (
+					ISINSCOPE ( DimInfraction[InfractionType] ) && NOT ISBLANK ( Cur ),
+					DIVIDE ( Cumulative, SUMX ( AllTypes, [@Violations] ) )
+				)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 03 Infraction Analysis
+		lineageTag: e12f42da-cc39-4c54-9655-d641a03e0851
+
+	/// Valor elegido en el segmentador Top N (10 por defecto).
+	measure 'Top N Value' = SELECTEDVALUE ( 'Top N'[N], 10 )
+		formatString: 0
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 3d4f1bdd-26df-4be7-a394-34ee0334153d
+
+	/// Infracciones solo para los tipos dentro del Top N dinámico. Usar como valor del gráfico.
+	measure 'Violations Top N' = IF ( [Infraction Ranking] <= [Top N Value], [Total Traffic Violations] )
+		formatString: #,0
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 0a28dd1c-15fb-4f34-ae3a-a03af4be3318
+
+	/// Porcentaje del total que concentran los 5 tipos principales.
+	measure 'Top 5 Infractions Share %' =
+			VAR Types = VALUES ( DimInfraction[InfractionType] )
+			VAR TopTypes = TOPN ( 5, Types, [Total Traffic Violations], DESC )
+			RETURN
+				DIVIDE (
+					SUMX ( TopTypes, [Total Traffic Violations] ),
+					SUMX ( Types, [Total Traffic Violations] )
+				)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 6ebcf283-afb9-417d-954a-92488a094577
+
+	/// Porcentaje del total que concentran los 10 tipos principales.
+	measure 'Top 10 Infractions Share %' =
+			VAR Types = VALUES ( DimInfraction[InfractionType] )
+			VAR TopTypes = TOPN ( 10, Types, [Total Traffic Violations], DESC )
+			RETURN
+				DIVIDE (
+					SUMX ( TopTypes, [Total Traffic Violations] ),
+					SUMX ( Types, [Total Traffic Violations] )
+				)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 2ef06586-e8b7-4c1b-9934-e3339996f494
+
+	/// Nombre del tipo de infracción con más registros en el contexto.
+	measure 'Top Infraction Name' =
+			CONCATENATEX (
+				TOPN ( 1, VALUES ( DimInfraction[InfractionType] ), [Total Traffic Violations], DESC ),
+				DimInfraction[InfractionType],
+				", "
+			)
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 9c012327-4b69-4542-b086-3ec93836aae6
+
+	/// Participación del tipo de infracción principal.
+	measure 'Top Infraction Share %' =
+			VAR Types = VALUES ( DimInfraction[InfractionType] )
+			RETURN
+				DIVIDE (
+					MAXX ( Types, [Total Traffic Violations] ),
+					SUMX ( Types, [Total Traffic Violations] )
+				)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 8c56c617-bf58-4d1f-9137-aae9ab417966
+
+	/// Puntos porcentuales que aporta el elemento a la variación interanual del total seleccionado.
+	measure 'Contribution to YoY Growth %' =
+			DIVIDE (
+				[YoY Absolute Change],
+				CALCULATE ( [Violations PY Comparable], ALLSELECTED ( DimInfraction ) )
+			)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 03 Infraction Analysis
+		lineageTag: 075118a7-689f-48bf-a285-558f619fea0c
+
+	/// Texto con el año o rango de años que tiene datos en la selección.
+	measure 'Selected Year Label' =
+			VAR Years = CALCULATETABLE ( VALUES ( DimDate[Year] ), FactTrafficViolations )
+			VAR MinY = MINX ( Years, DimDate[Year] )
+			VAR MaxY = MAXX ( Years, DimDate[Year] )
+			RETURN
+				SWITCH (
+					TRUE (),
+					ISBLANK ( MinY ), "Sin datos",
+					MinY = MaxY, FORMAT ( MinY, "0" ),
+					FORMAT ( MinY, "0" ) & "–" & FORMAT ( MaxY, "0" )
+				)
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 3e31f9a1-f1fe-44a5-8dbe-5c02c267f672
+
+	/// Mes seleccionado, o "Todos los meses".
+	measure 'Selected Month Label' = SELECTEDVALUE ( DimDate[MonthName], "Todos los meses" )
+		displayFolder: 04 Dynamic & UX
+		lineageTag: a0d256f2-e378-422e-b972-fc89a6690496
+
+	/// Infracción o categoría seleccionada, o "Todas las infracciones".
+	measure 'Selected Infraction Label' =
+			SWITCH (
+				TRUE (),
+				HASONEVALUE ( DimInfraction[InfractionType] ), SELECTEDVALUE ( DimInfraction[InfractionType] ),
+				HASONEVALUE ( DimInfraction[InfractionCategory] ), SELECTEDVALUE ( DimInfraction[InfractionCategory] ),
+				"Todas las infracciones"
+			)
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 22c4e925-b3b9-49b2-9829-9ec47af4ca98
+
+	/// Aviso cuando la selección incluye un año incompleto. Vacío si todos los años están completos.
+	measure 'Partial Period Note' =
+			VAR LastIdx = [Last Data Month Index]
+			VAR LastYear = INT ( DIVIDE ( LastIdx - 1, 12 ) )
+			VAR LastMonthName =
+				CALCULATE (
+					MAX ( DimDate[MonthName] ),
+					REMOVEFILTERS (),
+					DimDate[MonthIndex] = LastIdx
+				)
+			VAR IncludesPartial =
+				NOT ISEMPTY (
+					CALCULATETABLE (
+						FactTrafficViolations,
+						KEEPFILTERS ( DimDate[IsCompleteViolationYear] = FALSE () )
+					)
+				)
+			RETURN
+				IF (
+					IncludesPartial,
+					"* " & LastYear & ": datos de enero a " & LOWER ( LastMonthName ) & ". Las variaciones comparan el mismo tramo del año anterior.",
+					""
+				)
+		displayFolder: 04 Dynamic & UX
+		lineageTag: cae17866-471f-4d77-9e0a-0e9b7d072c95
+
+	/// Título dinámico para encabezados de página y visuales.
+	measure 'Dynamic KPI Title' =
+			"Infracciones de tránsito · " & [Selected Year Label]
+				& IF ( HASONEVALUE ( DimDate[MonthName] ), " · " & [Selected Month Label] )
+				& IF ( ISFILTERED ( DimInfraction ), " · " & [Selected Infraction Label] )
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 062b35b4-6a58-4b0b-812e-30f565e59fc8
+
+	/// Variación interanual con flecha, lista para una tarjeta.
+	measure 'YoY Label' =
+			VAR Growth = [YoY Growth %]
+			RETURN
+				SWITCH (
+					TRUE (),
+					ISBLANK ( Growth ), "Sin período comparable",
+					Growth > 0, "▲ " & FORMAT ( Growth, "+0.0%" ) & " vs. año anterior",
+					Growth < 0, "▼ " & FORMAT ( Growth, "0.0%" ) & " vs. año anterior",
+					"= 0.0% vs. año anterior"
+				)
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 44cef191-2cd8-493d-b8b0-55e2502d96be
+
+	/// Color para formato condicional. Aumento y descenso usan colores neutros: más infracciones registradas no implica más conductas de riesgo.
+	measure 'KPI Color YoY' =
+			VAR Growth = [YoY Growth %]
+			RETURN
+				SWITCH (
+					TRUE (),
+					ISBLANK ( Growth ), "#8A8F98",
+					Growth > 0, "#F28C28",
+					Growth < 0, "#2A9D8F",
+					"#8A8F98"
+				)
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 0de9bec9-3914-4dc0-9616-d23c768bdb32
+
+	/// Variación según el segmentador de comparación (interanual o mensual).
+	measure 'Dynamic Variance %' =
+			SWITCH (
+				SELECTEDVALUE ( 'Comparison Selector'[ComparisonOrder], 1 ),
+				2, [MoM Growth %],
+				[YoY Growth %]
+			)
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 0cb774fb-6f22-4531-ad51-88129fef042d
+
+	/// Diferencia absoluta según el segmentador de comparación.
+	measure 'Dynamic Variance Absolute' =
+			SWITCH (
+				SELECTEDVALUE ( 'Comparison Selector'[ComparisonOrder], 1 ),
+				2, [MoM Absolute Change],
+				[YoY Absolute Change]
+			)
+		formatString: +#,0;-#,0;0
+		displayFolder: 04 Dynamic & UX
+		lineageTag: a2ebbeaf-ed29-44e8-b840-fc7610a5b944
+
+	/// Nombre de la comparación activa.
+	measure 'Dynamic Comparison Label' = SELECTEDVALUE ( 'Comparison Selector'[Comparison], "Interanual (YoY)" )
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 5e37849e-3d7a-474c-b5d1-5fe65696c84f
+
+	/// Medida elegida en el segmentador de métricas. El formato cambia según la métrica.
+	measure 'Selected Metric' =
+			SWITCH (
+				SELECTEDVALUE ( 'Metric Selector'[MetricOrder], 1 ),
+				1, [Total Traffic Violations],
+				2, [Average Monthly Violations],
+				3, [Total Violations YTD],
+				4, [YoY Growth %],
+				5, [Infraction Share %]
+			)
+		displayFolder: 04 Dynamic & UX
+		lineageTag: fc076610-bc33-45b3-8d64-50e544ef919f
+
+		formatStringDefinition =
+				SWITCH (
+					SELECTEDVALUE ( 'Metric Selector'[MetricOrder], 1 ),
+					4, "0.0%;-0.0%;0.0%",
+					5, "0.0%;-0.0%;0.0%",
+					"#,0"
+				)
+
+	/// Nombre de la métrica activa.
+	measure 'Selected Metric Label' = SELECTEDVALUE ( 'Metric Selector'[Metric], "Infracciones" )
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 16dd8751-7447-43a8-8f55-841bf1105527
+
+	/// Resumen en una frase para tooltips.
+	measure 'Dynamic Tooltip' =
+			VAR Cur = [Total Traffic Violations]
+			RETURN
+				IF (
+					NOT ISBLANK ( Cur ),
+					[Selected Infraction Label] & " · " & [Selected Year Label] & ": "
+						& FORMAT ( Cur, "#,0" ) & " infracciones registradas. " & [YoY Label] & "."
+				)
+		displayFolder: 04 Dynamic & UX
+		lineageTag: 7334ba28-20e9-4123-ba57-40e3c2c1bb95
+
+	/// Promedio mensual de fallecimientos.
+	measure 'Average Monthly Fatalities' =
+			AVERAGEX (
+				SUMMARIZE ( FactRoadFatalities, DimDate[MonthIndex] ),
+				[Total Road Fatalities]
+			)
+		formatString: #,0.0
+		displayFolder: 05 Road Safety
+		lineageTag: 67010674-0db7-490d-a06c-47ecc35ece42
+
+	/// Fallecimientos del mismo período del año anterior.
+	measure 'Fatalities Previous Year' = CALCULATE ( [Total Road Fatalities], SAMEPERIODLASTYEAR ( DimDate[Date] ) )
+		formatString: #,0
+		displayFolder: 05 Road Safety
+		lineageTag: ff669c08-91ed-4b4a-a369-2633c4b5371d
+
+	/// Variación interanual de fallecimientos.
+	measure 'Fatalities YoY %' =
+			VAR Cur = [Total Road Fatalities]
+			VAR Prev = [Fatalities Previous Year]
+			RETURN
+				IF ( NOT ISBLANK ( Cur ) && NOT ISBLANK ( Prev ), DIVIDE ( Cur - Prev, Prev ) )
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 05 Road Safety
+		lineageTag: 68da3d36-8ea4-4b5c-8ae9-e06252dbe1e2
+
+	/// Infracciones solo en los meses donde también hay datos de fallecimientos.
+	measure 'Violations (Common Period)' =
+			CALCULATE (
+				[Total Traffic Violations],
+				KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () )
+			)
+		formatString: #,0
+		displayFolder: 05 Road Safety
+		lineageTag: f3c824d6-9034-46f1-8851-45ff240d263d
+
+	/// Fallecimientos solo en los meses donde también hay datos de infracciones.
+	measure 'Fatalities (Common Period)' =
+			CALCULATE (
+				[Total Road Fatalities],
+				KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () )
+			)
+		formatString: #,0
+		displayFolder: 05 Road Safety
+		lineageTag: 99526bb6-3b2a-4631-94f4-2c71852e2608
+
+	/// Aviso cuando hay un filtro de infracción activo: ese filtro no afecta a los fallecimientos.
+	measure 'Infraction Filter Warning' =
+			IF (
+				ISFILTERED ( DimInfraction ),
+				"El filtro de infracción no aplica a los fallecimientos: la fuente no los desglosa por tipo de infracción."
+			)
+		displayFolder: 05 Road Safety
+		lineageTag: 56eae927-4581-46f7-85ec-bda3ab392883
+
+	/// Variación interanual del último año con datos dentro de la selección (comparación sobre el mismo tramo de meses).
+	measure 'Latest Year YoY %' =
+			VAR LatestYear =
+				MAXX ( CALCULATETABLE ( VALUES ( DimDate[Year] ), FactTrafficViolations ), DimDate[Year] )
+			RETURN
+				CALCULATE ( [YoY Growth %], DimDate[Year] = LatestYear )
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 04 Dynamic & UX
+
+	/// Texto para tarjeta: variación del último año con datos frente al anterior.
+	measure 'Latest Year YoY Label' =
+			VAR LatestYear =
+				MAXX ( CALCULATETABLE ( VALUES ( DimDate[Year] ), FactTrafficViolations ), DimDate[Year] )
+			VAR Growth = [Latest Year YoY %]
+			RETURN
+				IF (
+					ISBLANK ( Growth ),
+					"Sin período comparable",
+					IF ( Growth >= 0, "▲ ", "▼ " ) & FORMAT ( Growth, "+0.0%;-0.0%" )
+						& " · " & LatestYear & " vs. " & LatestYear - 1
+				)
+		displayFolder: 04 Dynamic & UX
+
+	/// Participación acumulada limitada a los tipos del Top N (línea del Pareto).
+	measure 'Cumulative Share Top N' = IF ( [Infraction Ranking] <= [Top N Value], [Cumulative Infraction Share %] )
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 03 Infraction Analysis
+
+	/// Texto para tarjeta: variación de fallecimientos del último año con datos frente al anterior.
+	measure 'Latest Year Fatalities YoY Label' =
+			VAR LatestYear =
+				MAXX ( CALCULATETABLE ( VALUES ( DimDate[Year] ), FactRoadFatalities ), DimDate[Year] )
+			VAR Growth = CALCULATE ( [Fatalities YoY %], DimDate[Year] = LatestYear )
+			RETURN
+				IF (
+					ISBLANK ( Growth ),
+					"Sin período comparable",
+					IF ( Growth >= 0, "▲ ", "▼ " ) & FORMAT ( Growth, "+0.0%;-0.0%" )
+						& " · " & LatestYear & " vs. " & LatestYear - 1
+				)
+		displayFolder: 05 Road Safety
+
+	column Placeholder
+		dataType: string
+		isHidden
+		lineageTag: 918e8dcc-958c-4664-89d3-bb50b3d336a5
+		summarizeBy: none
+		sourceColumn: Placeholder
+
+	partition _Measures = m
+		mode: import
+		source = #table(type table [Placeholder = text], {})
+

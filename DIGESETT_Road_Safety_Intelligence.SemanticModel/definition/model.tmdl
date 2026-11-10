@@ -1,0 +1,26 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_ProTooling = ["TMDLView_Desktop","DaxQueryView_Desktop","DevMode"]
+
+annotation PBI_QueryOrder = ["_Measures","DimDate","DimInfraction","FactTrafficViolations","FactRoadFatalities","pRutaDatos","stg_Infracciones","MapInfraction","stg_Fallecimientos","qa_InfraccionesSinMapear","Top N","Metric Selector","Comparison Selector"]
+
+ref table _Measures
+ref table DimDate
+ref table DimInfraction
+ref table FactTrafficViolations
+ref table FactRoadFatalities
+ref table 'Top N'
+ref table 'Metric Selector'
+ref table 'Comparison Selector'
+
+ref cultureInfo en-US
+
