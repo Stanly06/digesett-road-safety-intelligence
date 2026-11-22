@@ -4,10 +4,10 @@
   "position": {
     "x": 1236,
     "y": 680,
-    "z": 20000,
+    "z": 21000,
     "height": 352,
     "width": 660,
-    "tabOrder": 20000
+    "tabOrder": 21000
   },
   "visual": {
     "visualType": "pivotTable",
@@ -28,6 +28,7 @@
               },
               "queryRef": "DimDate.YearLabel",
               "nativeQueryRef": "YearLabel",
+              "displayName": "Año",
               "active": true
             }
           ]
@@ -47,6 +48,7 @@
               },
               "queryRef": "DimDate.MonthNameShort",
               "nativeQueryRef": "MonthNameShort",
+              "displayName": "Mes",
               "active": true
             }
           ]
@@ -65,7 +67,8 @@
                 }
               },
               "queryRef": "_Measures.Total Traffic Violations",
-              "nativeQueryRef": "Total Traffic Violations"
+              "nativeQueryRef": "Total Traffic Violations",
+              "displayName": "Infracciones"
             }
           ]
         }

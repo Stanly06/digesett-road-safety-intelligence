@@ -4,10 +4,10 @@
   "position": {
     "x": 1376,
     "y": 304,
-    "z": 16000,
+    "z": 17000,
     "height": 360,
     "width": 520,
-    "tabOrder": 16000
+    "tabOrder": 17000
   },
   "visual": {
     "visualType": "textbox",
@@ -64,7 +64,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "• No se calculan tasas: faltan denominadores (parque vehicular, población, kilómetros recorridos).",
+                    "value": "• Las tasas por habitante y por vehículo están en la página Riesgo vial (población del Banco Mundial y parque vehicular de la DGII).",
                     "textStyle": {
                       "fontSize": "10pt",
                       "color": "#F4F5F6"
@@ -75,7 +75,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "• Datos que ayudarían: accidentes y lesionados por provincia, tipo de vehículo, hora y vía; parque vehicular por año.",
+                    "value": "• Datos que ayudarían: accidentes y lesionados por provincia, tipo de vehículo, hora y vía; kilómetros recorridos.",
                     "textStyle": {
                       "fontSize": "10pt",
                       "color": "#A7AEB6"

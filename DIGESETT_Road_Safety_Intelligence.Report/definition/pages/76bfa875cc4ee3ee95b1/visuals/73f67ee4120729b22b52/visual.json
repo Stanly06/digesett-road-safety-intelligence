@@ -4,10 +4,10 @@
   "position": {
     "x": 1220,
     "y": 320,
-    "z": 17000,
+    "z": 18000,
     "height": 356,
     "width": 676,
-    "tabOrder": 17000
+    "tabOrder": 18000
   },
   "visual": {
     "visualType": "donutChart",
@@ -28,6 +28,7 @@
               },
               "queryRef": "DimInfraction.InfractionCategory",
               "nativeQueryRef": "InfractionCategory",
+              "displayName": "Categoría",
               "active": true
             }
           ]
@@ -46,12 +47,36 @@
                 }
               },
               "queryRef": "_Measures.Total Traffic Violations",
-              "nativeQueryRef": "Total Traffic Violations"
+              "nativeQueryRef": "Total Traffic Violations",
+              "displayName": "Infracciones"
             }
           ]
         }
       }
     },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Participación por categoría'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true,
     "objects": {
       "legend": [
         {
@@ -115,61 +140,6 @@
           }
         }
       ]
-    },
-    "visualContainerObjects": {
-      "title": [
-        {
-          "properties": {
-            "show": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "text": {
-              "expr": {
-                "Literal": {
-                  "Value": "'Participación por categoría'"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "399a5bd00094383b2b3c",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DimInfraction"
-              }
-            },
-            "Property": "InfractionCategory"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "210c2d2d7622b246030c",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "_Measures"
-              }
-            },
-            "Property": "Total Traffic Violations"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
+    }
   }
 }

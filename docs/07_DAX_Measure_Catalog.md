@@ -1010,3 +1010,436 @@ RETURN
 ```
 
 ---
+
+
+## 06 Risk & Control
+
+Medidas añadidas en la versión 2 (noviembre 2026): tasas con denominadores externos, control estadístico de fallecimientos, composición, concentración, estacionalidad y proyección. Denominadores en `data/reference/denominators.csv` (Banco Mundial y DGII) y grupo de alto riesgo en `data/reference/high_risk_types.csv`.
+
+| Medida | Descripción | Formato |
+|---|---|---|
+| `Vehicle Fleet` |  | `#,0` |
+| `Fatalities per 100k Inhabitants` |  | `#,0.0` |
+| `Fatalities per 10k Vehicles` |  | `#,0.00` |
+| `Violations per 1k Vehicles` |  | `#,0` |
+| `Latest Fatality Year` |  | `0` |
+| `Latest Complete Violation Year` |  | `0` |
+| `High Risk Share %` |  | `0.0%` |
+| `Fatalities per 100k Inhabitants (Latest Year)` |  | `#,0.0` |
+| `Fatalities per 10k Vehicles (Latest Year)` |  | `#,0.00` |
+| `Violations per 1k Vehicles (Latest Year)` |  | `#,0` |
+| `High Risk Share % (Latest Year)` |  | `0.0%` |
+| `Latest Year Rates Label` |  | `texto` |
+| `HHI Index` |  | `#,0` |
+| `Seasonal Index Violations` |  | `#,0` |
+| `Seasonal Index Fatalities` |  | `#,0` |
+| `Index Violations` |  | `#,0` |
+| `Index Fatalities` |  | `#,0` |
+| `Index Vehicle Fleet` |  | `#,0` |
+| `Index Population` |  | `#,0` |
+| `Fatalities Control Center` |  | `#,0.0` |
+| `Fatalities UCL` |  | `#,0.0` |
+| `Fatalities LCL` |  | `#,0.0` |
+| `Fatalities Out of Control` |  | `#,0` |
+| `Projected Year-End Violations` |  | `#,0` |
+| `Projection Range Label` |  | `texto` |
+
+
+### Vehicle Fleet
+
+
+
+```dax
+Vehicle Fleet =
+CALCULATE ( SUM ( Denominators[VehicleFleet] ), TREATAS ( VALUES ( DimDate[Year] ), Denominators[Year] ) )
+```
+
+
+### Fatalities per 100k Inhabitants
+
+
+
+```dax
+Fatalities per 100k Inhabitants =
+VAR T =
+    FILTER (
+        ADDCOLUMNS ( VALUES ( DimDate[Year] ), "@f", [Total Road Fatalities], "@d", [Population] ),
+        NOT ISBLANK ( [@f] ) && NOT ISBLANK ( [@d] )
+    )
+RETURN
+    DIVIDE ( SUMX ( T, [@f] ), SUMX ( T, [@d] ) ) * 100000
+```
+
+
+### Fatalities per 10k Vehicles
+
+
+
+```dax
+Fatalities per 10k Vehicles =
+VAR T =
+    FILTER (
+        ADDCOLUMNS ( VALUES ( DimDate[Year] ), "@f", [Total Road Fatalities], "@d", [Vehicle Fleet] ),
+        NOT ISBLANK ( [@f] ) && NOT ISBLANK ( [@d] )
+    )
+RETURN
+    DIVIDE ( SUMX ( T, [@f] ), SUMX ( T, [@d] ) ) * 10000
+```
+
+
+### Violations per 1k Vehicles
+
+
+
+```dax
+Violations per 1k Vehicles =
+VAR T =
+    FILTER (
+        ADDCOLUMNS (
+            VALUES ( DimDate[Year] ),
+            "@v", CALCULATE ( [Total Traffic Violations], KEEPFILTERS ( DimDate[IsCompleteViolationYear] = TRUE () ) ),
+            "@d", [Vehicle Fleet]
+        ),
+        NOT ISBLANK ( [@v] ) && NOT ISBLANK ( [@d] )
+    )
+RETURN
+    DIVIDE ( SUMX ( T, [@v] ), SUMX ( T, [@d] ) ) * 1000
+```
+
+
+### Latest Fatality Year
+
+
+
+```dax
+Latest Fatality Year =
+CALCULATE ( MAX ( DimDate[Year] ), REMOVEFILTERS (), DimDate[HasFatalityData] = TRUE () )
+```
+
+
+### Latest Complete Violation Year
+
+
+
+```dax
+Latest Complete Violation Year =
+CALCULATE ( MAX ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCompleteViolationYear] = TRUE () )
+```
+
+
+### High Risk Share %
+
+
+
+```dax
+High Risk Share % =
+DIVIDE ( CALCULATE ( [Total Traffic Violations], KEEPFILTERS ( DimInfraction[IsHighRisk] = TRUE () ) ), [Total Traffic Violations] )
+```
+
+
+### Fatalities per 100k Inhabitants (Latest Year)
+
+
+
+```dax
+Fatalities per 100k Inhabitants (Latest Year) =
+VAR Y = [Latest Fatality Year]
+RETURN
+    CALCULATE ( [Fatalities per 100k Inhabitants], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+```
+
+
+### Fatalities per 10k Vehicles (Latest Year)
+
+
+
+```dax
+Fatalities per 10k Vehicles (Latest Year) =
+VAR Y = [Latest Fatality Year]
+RETURN
+    CALCULATE ( [Fatalities per 10k Vehicles], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+```
+
+
+### Violations per 1k Vehicles (Latest Year)
+
+
+
+```dax
+Violations per 1k Vehicles (Latest Year) =
+VAR Y = [Latest Complete Violation Year]
+RETURN
+    CALCULATE ( [Violations per 1k Vehicles], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+```
+
+
+### High Risk Share % (Latest Year)
+
+
+
+```dax
+High Risk Share % (Latest Year) =
+VAR Y = [Latest Complete Violation Year]
+RETURN
+    CALCULATE ( [High Risk Share %], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+```
+
+
+### Latest Year Rates Label
+
+
+
+```dax
+Latest Year Rates Label =
+"Fallecimientos: " & [Latest Fatality Year] & " · infracciones: " & [Latest Complete Violation Year]
+```
+
+
+### HHI Index
+
+
+
+```dax
+HHI Index =
+VAR Tot = [Total Traffic Violations]
+RETURN
+    IF (
+        NOT ISBLANK ( Tot ),
+        SUMX ( VALUES ( DimInfraction[InfractionID] ), DIVIDE ( [Total Traffic Violations], Tot ) ^ 2 ) * 10000
+    )
+```
+
+
+### Seasonal Index Violations
+
+
+
+```dax
+Seasonal Index Violations =
+VAR MonthAvg = CALCULATE ( [Average Monthly Violations], KEEPFILTERS ( DimDate[IsCompleteViolationYear] = TRUE () ) )
+VAR AllAvg =
+    CALCULATE (
+        [Average Monthly Violations],
+        REMOVEFILTERS ( DimDate[MonthName], DimDate[MonthNameShort], DimDate[MonthNumber] ),
+        KEEPFILTERS ( DimDate[IsCompleteViolationYear] = TRUE () )
+    )
+RETURN
+    DIVIDE ( MonthAvg, AllAvg ) * 100
+```
+
+
+### Seasonal Index Fatalities
+
+
+
+```dax
+Seasonal Index Fatalities =
+DIVIDE (
+    [Average Monthly Fatalities],
+    CALCULATE ( [Average Monthly Fatalities], REMOVEFILTERS ( DimDate[MonthName], DimDate[MonthNameShort], DimDate[MonthNumber] ) )
+) * 100
+```
+
+
+### Index Violations
+
+
+
+```dax
+Index Violations =
+VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+VAR BaseValue = CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+VAR CurValue = CALCULATE ( [Total Traffic Violations], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+RETURN
+    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Total Traffic Violations], BaseValue ) * 100 )
+```
+
+
+### Index Fatalities
+
+
+
+```dax
+Index Fatalities =
+VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+VAR BaseValue = CALCULATE ( [Total Road Fatalities], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+VAR CurValue = CALCULATE ( [Total Road Fatalities], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+RETURN
+    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Total Road Fatalities], BaseValue ) * 100 )
+```
+
+
+### Index Vehicle Fleet
+
+
+
+```dax
+Index Vehicle Fleet =
+VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+VAR BaseValue = CALCULATE ( [Vehicle Fleet], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+VAR CurValue = CALCULATE ( [Vehicle Fleet], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+RETURN
+    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Vehicle Fleet], BaseValue ) * 100 )
+```
+
+
+### Index Population
+
+
+
+```dax
+Index Population =
+VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+VAR BaseValue = CALCULATE ( [Population], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+VAR CurValue = CALCULATE ( [Population], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+RETURN
+    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Population], BaseValue ) * 100 )
+```
+
+
+### Fatalities Control Center
+
+
+
+```dax
+Fatalities Control Center =
+VAR Base =
+    CALCULATETABLE (
+        ADDCOLUMNS ( SUMMARIZE ( FactRoadFatalities, DimDate[MonthIndex] ), "@v", [Total Road Fatalities] ),
+        REMOVEFILTERS ( DimDate ),
+        DimDate[Year] <= 2019
+    )
+VAR CL = AVERAGEX ( Base, [@v] )
+VAR MinIdx = MINX ( Base, DimDate[MonthIndex] )
+VAR MRbar =
+    AVERAGEX (
+        FILTER ( Base, DimDate[MonthIndex] > MinIdx ),
+        VAR i = DimDate[MonthIndex]
+        VAR v = [@v]
+        RETURN ABS ( v - MAXX ( FILTER ( Base, DimDate[MonthIndex] = i - 1 ), [@v] ) )
+    )
+VAR Sigma = MRbar / 1.128
+RETURN
+    IF ( NOT ISBLANK ( [Total Road Fatalities] ), CL )
+```
+
+
+### Fatalities UCL
+
+
+
+```dax
+Fatalities UCL =
+VAR Base =
+    CALCULATETABLE (
+        ADDCOLUMNS ( SUMMARIZE ( FactRoadFatalities, DimDate[MonthIndex] ), "@v", [Total Road Fatalities] ),
+        REMOVEFILTERS ( DimDate ),
+        DimDate[Year] <= 2019
+    )
+VAR CL = AVERAGEX ( Base, [@v] )
+VAR MinIdx = MINX ( Base, DimDate[MonthIndex] )
+VAR MRbar =
+    AVERAGEX (
+        FILTER ( Base, DimDate[MonthIndex] > MinIdx ),
+        VAR i = DimDate[MonthIndex]
+        VAR v = [@v]
+        RETURN ABS ( v - MAXX ( FILTER ( Base, DimDate[MonthIndex] = i - 1 ), [@v] ) )
+    )
+VAR Sigma = MRbar / 1.128
+RETURN
+    IF ( NOT ISBLANK ( [Total Road Fatalities] ), CL + 3 * Sigma )
+```
+
+
+### Fatalities LCL
+
+
+
+```dax
+Fatalities LCL =
+VAR Base =
+    CALCULATETABLE (
+        ADDCOLUMNS ( SUMMARIZE ( FactRoadFatalities, DimDate[MonthIndex] ), "@v", [Total Road Fatalities] ),
+        REMOVEFILTERS ( DimDate ),
+        DimDate[Year] <= 2019
+    )
+VAR CL = AVERAGEX ( Base, [@v] )
+VAR MinIdx = MINX ( Base, DimDate[MonthIndex] )
+VAR MRbar =
+    AVERAGEX (
+        FILTER ( Base, DimDate[MonthIndex] > MinIdx ),
+        VAR i = DimDate[MonthIndex]
+        VAR v = [@v]
+        RETURN ABS ( v - MAXX ( FILTER ( Base, DimDate[MonthIndex] = i - 1 ), [@v] ) )
+    )
+VAR Sigma = MRbar / 1.128
+RETURN
+    IF ( NOT ISBLANK ( [Total Road Fatalities] ), CL - 3 * Sigma )
+```
+
+
+### Fatalities Out of Control
+
+
+
+```dax
+Fatalities Out of Control =
+VAR v = [Total Road Fatalities]
+RETURN
+    IF ( HASONEVALUE ( DimDate[MonthIndex] ) && ( v > [Fatalities UCL] || v < [Fatalities LCL] ), v )
+```
+
+
+### Projected Year-End Violations
+
+
+
+```dax
+Projected Year-End Violations =
+VAR LastIdx = [Last Data Month Index]
+VAR LY = INT ( DIVIDE ( LastIdx - 1, 12 ) )
+VAR LM = LastIdx - LY * 12
+VAR YtdValue = CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = LY )
+VAR Shares =
+    ADDCOLUMNS (
+        CALCULATETABLE ( VALUES ( DimDate[Year] ), REMOVEFILTERS ( DimDate ), DimDate[IsCompleteViolationYear] = TRUE (), DimDate[Year] <> 2020 ),
+        "@s",
+            VAR y = DimDate[Year]
+            RETURN
+                DIVIDE (
+                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y, DimDate[MonthNumber] <= LM ),
+                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y )
+                )
+    )
+RETURN
+    IF ( LM < 12, DIVIDE ( YtdValue, MEDIANX ( Shares, [@s] ) ) )
+```
+
+
+### Projection Range Label
+
+
+
+```dax
+Projection Range Label =
+VAR LastIdx = [Last Data Month Index]
+VAR LY = INT ( DIVIDE ( LastIdx - 1, 12 ) )
+VAR LM = LastIdx - LY * 12
+VAR YtdValue = CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = LY )
+VAR Shares =
+    ADDCOLUMNS (
+        CALCULATETABLE ( VALUES ( DimDate[Year] ), REMOVEFILTERS ( DimDate ), DimDate[IsCompleteViolationYear] = TRUE (), DimDate[Year] <> 2020 ),
+        "@s",
+            VAR y = DimDate[Year]
+            RETURN
+                DIVIDE (
+                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y, DimDate[MonthNumber] <= LM ),
+                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y )
+                )
+    )
+RETURN
+    IF ( LM < 12, "Rango " & FORMAT ( DIVIDE ( YtdValue, MAXX ( Shares, [@s] ) ), "#,0" ) & " – " & FORMAT ( DIVIDE ( YtdValue, MINX ( Shares, [@s] ) ), "#,0" ) & " · estimación " & LY, "" )
+```
+
+
+> Corrección v2: `Top Infraction Name` devuelve «Sin datos» cuando no hay infracciones en el contexto (antes unía los 106 nombres, porque TOPN trata todos los vacíos como empate). `Dynamic Variance Absolute` se muestra ahora por mes, así la comparación mensual (MoM) tiene valor.

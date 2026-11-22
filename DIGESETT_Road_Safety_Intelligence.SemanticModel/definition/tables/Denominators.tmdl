@@ -1,0 +1,29 @@
+/// Denominadores anuales: población a mitad de año (Banco Mundial, WDI SP.POP.TOTL, act. 7-jul-2026) y parque vehicular al 31 de diciembre (DGII; 2017–2022 redondeado a miles). Fuente y precisión en data/reference/denominators.csv.
+table Denominators
+	lineageTag: bbd12464-a1f7-4999-a1b9-2fbc2616af14
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: 0db061e5-2aa9-4cc5-b072-d9d1dbf71084
+		summarizeBy: none
+		sourceColumn: Year
+
+	column Population
+		dataType: int64
+		formatString: #,0
+		lineageTag: 5676c691-5aac-42a2-93c7-52ddc987c099
+		summarizeBy: none
+		sourceColumn: Population
+
+	column VehicleFleet
+		dataType: int64
+		formatString: #,0
+		lineageTag: 572628a2-872f-4654-888a-0655028fa588
+		summarizeBy: none
+		sourceColumn: VehicleFleet
+
+	partition Denominators = m
+		mode: import
+		source = #table(type table [Year = Int64.Type, Population = Int64.Type, VehicleFleet = Int64.Type], {{2016, 10551430, 3854038}, {2017, 10666843, 4097000}, {2018, 10782053, 4351000}, {2019, 10894043, 4635000}, {2020, 11008300, 4842000}, {2021, 11123476, 5152000}, {2022, 11230734, 5463000}, {2023, 11331265, 5809136}, {2024, 11427557, 6194052}, {2025, 11520487, 6640871}})
+

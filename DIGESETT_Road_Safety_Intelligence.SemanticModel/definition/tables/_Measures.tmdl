@@ -411,10 +411,14 @@ table _Measures
 
 	/// Nombre del tipo de infracción con más registros en el contexto.
 	measure 'Top Infraction Name' =
-			CONCATENATEX (
-				TOPN ( 1, VALUES ( DimInfraction[InfractionType] ), [Total Traffic Violations], DESC ),
-				DimInfraction[InfractionType],
-				", "
+			IF (
+				ISBLANK ( [Total Traffic Violations] ),
+				"Sin datos",
+				CONCATENATEX (
+					TOPN ( 1, VALUES ( DimInfraction[InfractionType] ), [Total Traffic Violations], DESC ),
+					DimInfraction[InfractionType],
+					", "
+				)
 			)
 		displayFolder: 03 Infraction Analysis
 		lineageTag: 9c012327-4b69-4542-b086-3ec93836aae6
@@ -662,6 +666,7 @@ table _Measures
 				CALCULATE ( [YoY Growth %], DimDate[Year] = LatestYear )
 		formatString: 0.0%;-0.0%;0.0%
 		displayFolder: 04 Dynamic & UX
+		lineageTag: 5ec88cc1-3fbe-40c0-9e9b-1de695a592b9
 
 	/// Texto para tarjeta: variación del último año con datos frente al anterior.
 	measure 'Latest Year YoY Label' =
@@ -676,11 +681,13 @@ table _Measures
 						& " · " & LatestYear & " vs. " & LatestYear - 1
 				)
 		displayFolder: 04 Dynamic & UX
+		lineageTag: e1099508-f349-47e4-9cc2-38dce511c2f7
 
 	/// Participación acumulada limitada a los tipos del Top N (línea del Pareto).
 	measure 'Cumulative Share Top N' = IF ( [Infraction Ranking] <= [Top N Value], [Cumulative Infraction Share %] )
 		formatString: 0.0%;-0.0%;0.0%
 		displayFolder: 03 Infraction Analysis
+		lineageTag: a8a3c68a-c200-4016-9a37-60c6888dff95
 
 	/// Texto para tarjeta: variación de fallecimientos del último año con datos frente al anterior.
 	measure 'Latest Year Fatalities YoY Label' =
@@ -695,6 +702,330 @@ table _Measures
 						& " · " & LatestYear & " vs. " & LatestYear - 1
 				)
 		displayFolder: 05 Road Safety
+		lineageTag: 5d400d18-fd5b-416c-a48d-0e64ad8815b1
+
+	/// Población a mitad de año de los años en contexto (Banco Mundial).
+	measure Population = CALCULATE ( SUM ( Denominators[Population] ), TREATAS ( VALUES ( DimDate[Year] ), Denominators[Year] ) )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 3e27e509-dafc-4c7e-9096-c17efc1376b1
+
+	/// Parque vehicular al 31 de diciembre de los años en contexto (DGII).
+	measure 'Vehicle Fleet' = CALCULATE ( SUM ( Denominators[VehicleFleet] ), TREATAS ( VALUES ( DimDate[Year] ), Denominators[Year] ) )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: b061af9e-2c84-491f-bbbb-2ee2ffe0356d
+
+	/// Fallecimientos por cada 100,000 habitantes. Con varios años: total de fallecimientos entre la suma de la población de esos años.
+	measure 'Fatalities per 100k Inhabitants' =
+			VAR T =
+			    FILTER (
+			        ADDCOLUMNS ( VALUES ( DimDate[Year] ), "@f", [Total Road Fatalities], "@d", [Population] ),
+			        NOT ISBLANK ( [@f] ) && NOT ISBLANK ( [@d] )
+			    )
+			RETURN
+			    DIVIDE ( SUMX ( T, [@f] ), SUMX ( T, [@d] ) ) * 100000
+		formatString: #,0.0
+		displayFolder: 06 Risk & Control
+		lineageTag: 83f3e0f8-8893-471a-bbd5-5b5d98a09931
+
+	/// Fallecimientos por cada 10,000 vehículos registrados.
+	measure 'Fatalities per 10k Vehicles' =
+			VAR T =
+			    FILTER (
+			        ADDCOLUMNS ( VALUES ( DimDate[Year] ), "@f", [Total Road Fatalities], "@d", [Vehicle Fleet] ),
+			        NOT ISBLANK ( [@f] ) && NOT ISBLANK ( [@d] )
+			    )
+			RETURN
+			    DIVIDE ( SUMX ( T, [@f] ), SUMX ( T, [@d] ) ) * 10000
+		formatString: #,0.00
+		displayFolder: 06 Risk & Control
+		lineageTag: 39d2eeec-7250-46ce-abf6-b332b5ddebb1
+
+	/// Infracciones registradas por cada 1,000 vehículos; solo años completos. Mide intensidad de fiscalización, no conducta.
+	measure 'Violations per 1k Vehicles' =
+			VAR T =
+			    FILTER (
+			        ADDCOLUMNS (
+			            VALUES ( DimDate[Year] ),
+			            "@v", CALCULATE ( [Total Traffic Violations], KEEPFILTERS ( DimDate[IsCompleteViolationYear] = TRUE () ) ),
+			            "@d", [Vehicle Fleet]
+			        ),
+			        NOT ISBLANK ( [@v] ) && NOT ISBLANK ( [@d] )
+			    )
+			RETURN
+			    DIVIDE ( SUMX ( T, [@v] ), SUMX ( T, [@d] ) ) * 1000
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 25bb1586-9b0f-4d37-b344-9c7ef17a1e0e
+
+	/// Último año con fallecimientos publicados.
+	measure 'Latest Fatality Year' = CALCULATE ( MAX ( DimDate[Year] ), REMOVEFILTERS (), DimDate[HasFatalityData] = TRUE () )
+		formatString: 0
+		isHidden
+		displayFolder: 06 Risk & Control
+		lineageTag: 5f6e6fd0-1214-45ab-a06d-078765f92a0d
+
+	/// Último año completo de infracciones.
+	measure 'Latest Complete Violation Year' = CALCULATE ( MAX ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCompleteViolationYear] = TRUE () )
+		formatString: 0
+		isHidden
+		displayFolder: 06 Risk & Control
+		lineageTag: b0cc4eb9-96ac-40bd-8c8a-90cc7f1e39b1
+
+	/// Participación de las infracciones de alto riesgo (DimInfraction[IsHighRisk]).
+	measure 'High Risk Share %' = DIVIDE ( CALCULATE ( [Total Traffic Violations], KEEPFILTERS ( DimInfraction[IsHighRisk] = TRUE () ) ), [Total Traffic Violations] )
+		formatString: 0.0%
+		displayFolder: 06 Risk & Control
+		lineageTag: 296c9361-d495-4ea3-87e7-f42cdf9288fe
+
+	/// [Fatalities per 100k Inhabitants] en el último año con fallecimientos.
+	measure 'Fatalities per 100k Inhabitants (Latest Year)' =
+			VAR Y = [Latest Fatality Year]
+			RETURN
+			    CALCULATE ( [Fatalities per 100k Inhabitants], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+		formatString: #,0.0
+		displayFolder: 06 Risk & Control
+		lineageTag: 1921a5ac-2a18-4332-9e89-4de74ff7c28b
+
+	/// [Fatalities per 10k Vehicles] en el último año con fallecimientos.
+	measure 'Fatalities per 10k Vehicles (Latest Year)' =
+			VAR Y = [Latest Fatality Year]
+			RETURN
+			    CALCULATE ( [Fatalities per 10k Vehicles], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+		formatString: #,0.00
+		displayFolder: 06 Risk & Control
+		lineageTag: 884d7220-8c45-48e7-9b5f-acc598ff7077
+
+	/// [Violations per 1k Vehicles] en el último año completo.
+	measure 'Violations per 1k Vehicles (Latest Year)' =
+			VAR Y = [Latest Complete Violation Year]
+			RETURN
+			    CALCULATE ( [Violations per 1k Vehicles], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 93f80377-9459-41f5-b86b-a4b1ff6a3d6f
+
+	/// [High Risk Share %] en el último año completo.
+	measure 'High Risk Share % (Latest Year)' =
+			VAR Y = [Latest Complete Violation Year]
+			RETURN
+			    CALCULATE ( [High Risk Share %], REMOVEFILTERS ( DimDate ), DimDate[Year] = Y )
+		formatString: 0.0%
+		displayFolder: 06 Risk & Control
+		lineageTag: 4f06d9ab-01d7-4731-a0db-2935864b6efa
+
+	/// Texto con los años usados en las tarjetas de tasas.
+	measure 'Latest Year Rates Label' = "Fallecimientos: " & [Latest Fatality Year] & " · infracciones: " & [Latest Complete Violation Year]
+		displayFolder: 06 Risk & Control
+		lineageTag: d617c843-f3e0-463c-a751-9fe11794ae22
+
+	/// Índice Herfindahl-Hirschman de concentración por tipo de infracción (0–10,000).
+	measure 'HHI Index' =
+			VAR Tot = [Total Traffic Violations]
+			RETURN
+			    IF (
+			        NOT ISBLANK ( Tot ),
+			        SUMX ( VALUES ( DimInfraction[InfractionID] ), DIVIDE ( [Total Traffic Violations], Tot ) ^ 2 ) * 10000
+			    )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 22b480ee-0c70-4c00-a8e7-60a7a1f75b8f
+
+	/// Promedio del mes / promedio mensual general × 100, solo años completos.
+	measure 'Seasonal Index Violations' =
+			VAR MonthAvg = CALCULATE ( [Average Monthly Violations], KEEPFILTERS ( DimDate[IsCompleteViolationYear] = TRUE () ) )
+			VAR AllAvg =
+			    CALCULATE (
+			        [Average Monthly Violations],
+			        REMOVEFILTERS ( DimDate[MonthName], DimDate[MonthNameShort], DimDate[MonthNumber] ),
+			        KEEPFILTERS ( DimDate[IsCompleteViolationYear] = TRUE () )
+			    )
+			RETURN
+			    DIVIDE ( MonthAvg, AllAvg ) * 100
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 56e35a56-0a4a-4988-af6b-2c0726c8b53b
+
+	/// Promedio de fallecimientos del mes / promedio mensual general × 100.
+	measure 'Seasonal Index Fatalities' =
+			DIVIDE (
+			    [Average Monthly Fatalities],
+			    CALCULATE ( [Average Monthly Fatalities], REMOVEFILTERS ( DimDate[MonthName], DimDate[MonthNameShort], DimDate[MonthNumber] ) )
+			) * 100
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: ae2fb25b-ce09-47df-b771-19f7d59b4e60
+
+	/// Infracciones como índice: primer año del período común = 100. Solo años del período común.
+	measure 'Index Violations' =
+			VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+			VAR BaseValue = CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+			VAR CurValue = CALCULATE ( [Total Traffic Violations], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+			RETURN
+			    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Total Traffic Violations], BaseValue ) * 100 )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 81ae4383-afeb-4082-99a7-59ad7bdc6f59
+
+	/// Fallecimientos como índice: primer año del período común = 100. Solo años del período común.
+	measure 'Index Fatalities' =
+			VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+			VAR BaseValue = CALCULATE ( [Total Road Fatalities], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+			VAR CurValue = CALCULATE ( [Total Road Fatalities], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+			RETURN
+			    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Total Road Fatalities], BaseValue ) * 100 )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 06250e3b-a9d3-4390-ab70-b032163528a1
+
+	/// Parque vehicular como índice: primer año del período común = 100. Solo años del período común.
+	measure 'Index Vehicle Fleet' =
+			VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+			VAR BaseValue = CALCULATE ( [Vehicle Fleet], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+			VAR CurValue = CALCULATE ( [Vehicle Fleet], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+			RETURN
+			    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Vehicle Fleet], BaseValue ) * 100 )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: bb4e7833-a94e-45cb-bcec-5cbd59c655a8
+
+	/// Población como índice: primer año del período común = 100. Solo años del período común.
+	measure 'Index Population' =
+			VAR BaseYear = CALCULATE ( MIN ( DimDate[Year] ), REMOVEFILTERS (), DimDate[IsCommonPeriod] = TRUE () )
+			VAR BaseValue = CALCULATE ( [Population], REMOVEFILTERS ( DimDate ), DimDate[Year] = BaseYear )
+			VAR CurValue = CALCULATE ( [Population], KEEPFILTERS ( DimDate[IsCommonPeriod] = TRUE () ) )
+			RETURN
+			    IF ( NOT ISBLANK ( CurValue ), DIVIDE ( [Population], BaseValue ) * 100 )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 8d481633-2de5-4582-b54f-61f1b1e13fd7
+
+	/// Línea central del gráfico de control I de fallecimientos mensuales (base 2016–2019).
+	measure 'Fatalities Control Center' =
+			VAR Base =
+			    CALCULATETABLE (
+			        ADDCOLUMNS ( SUMMARIZE ( FactRoadFatalities, DimDate[MonthIndex] ), "@v", [Total Road Fatalities] ),
+			        REMOVEFILTERS ( DimDate ),
+			        DimDate[Year] <= 2019
+			    )
+			VAR CL = AVERAGEX ( Base, [@v] )
+			VAR MinIdx = MINX ( Base, DimDate[MonthIndex] )
+			VAR MRbar =
+			    AVERAGEX (
+			        FILTER ( Base, DimDate[MonthIndex] > MinIdx ),
+			        VAR i = DimDate[MonthIndex]
+			        VAR v = [@v]
+			        RETURN ABS ( v - MAXX ( FILTER ( Base, DimDate[MonthIndex] = i - 1 ), [@v] ) )
+			    )
+			VAR Sigma = MRbar / 1.128
+			RETURN
+			    IF ( NOT ISBLANK ( [Total Road Fatalities] ), CL )
+		formatString: #,0.0
+		displayFolder: 06 Risk & Control
+		lineageTag: e7364f4d-de27-4aef-9b49-80828499609d
+
+	/// Límite superior de control: media + 3σ (σ = rango móvil medio / 1.128), base 2016–2019.
+	measure 'Fatalities UCL' =
+			VAR Base =
+			    CALCULATETABLE (
+			        ADDCOLUMNS ( SUMMARIZE ( FactRoadFatalities, DimDate[MonthIndex] ), "@v", [Total Road Fatalities] ),
+			        REMOVEFILTERS ( DimDate ),
+			        DimDate[Year] <= 2019
+			    )
+			VAR CL = AVERAGEX ( Base, [@v] )
+			VAR MinIdx = MINX ( Base, DimDate[MonthIndex] )
+			VAR MRbar =
+			    AVERAGEX (
+			        FILTER ( Base, DimDate[MonthIndex] > MinIdx ),
+			        VAR i = DimDate[MonthIndex]
+			        VAR v = [@v]
+			        RETURN ABS ( v - MAXX ( FILTER ( Base, DimDate[MonthIndex] = i - 1 ), [@v] ) )
+			    )
+			VAR Sigma = MRbar / 1.128
+			RETURN
+			    IF ( NOT ISBLANK ( [Total Road Fatalities] ), CL + 3 * Sigma )
+		formatString: #,0.0
+		displayFolder: 06 Risk & Control
+		lineageTag: 75b47ba8-c2e4-4ff5-81b9-198c39101326
+
+	/// Límite inferior de control: media − 3σ, base 2016–2019.
+	measure 'Fatalities LCL' =
+			VAR Base =
+			    CALCULATETABLE (
+			        ADDCOLUMNS ( SUMMARIZE ( FactRoadFatalities, DimDate[MonthIndex] ), "@v", [Total Road Fatalities] ),
+			        REMOVEFILTERS ( DimDate ),
+			        DimDate[Year] <= 2019
+			    )
+			VAR CL = AVERAGEX ( Base, [@v] )
+			VAR MinIdx = MINX ( Base, DimDate[MonthIndex] )
+			VAR MRbar =
+			    AVERAGEX (
+			        FILTER ( Base, DimDate[MonthIndex] > MinIdx ),
+			        VAR i = DimDate[MonthIndex]
+			        VAR v = [@v]
+			        RETURN ABS ( v - MAXX ( FILTER ( Base, DimDate[MonthIndex] = i - 1 ), [@v] ) )
+			    )
+			VAR Sigma = MRbar / 1.128
+			RETURN
+			    IF ( NOT ISBLANK ( [Total Road Fatalities] ), CL - 3 * Sigma )
+		formatString: #,0.0
+		displayFolder: 06 Risk & Control
+		lineageTag: 6f0f3555-38ac-4ae4-824a-6cf3794b27c3
+
+	/// Fallecimientos del mes solo cuando está fuera de los límites de control (regla 1).
+	measure 'Fatalities Out of Control' =
+			VAR v = [Total Road Fatalities]
+			RETURN
+			    IF ( HASONEVALUE ( DimDate[MonthIndex] ) && ( v > [Fatalities UCL] || v < [Fatalities LCL] ), v )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: 3bd6ad9d-22e3-4a22-bfa4-e7f15f22ffd0
+
+	/// Estimación del cierre del año parcial: acumulado / participación mediana de esos meses en años completos (sin 2020).
+	measure 'Projected Year-End Violations' =
+			VAR LastIdx = [Last Data Month Index]
+			VAR LY = INT ( DIVIDE ( LastIdx - 1, 12 ) )
+			VAR LM = LastIdx - LY * 12
+			VAR YtdValue = CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = LY )
+			VAR Shares =
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( DimDate[Year] ), REMOVEFILTERS ( DimDate ), DimDate[IsCompleteViolationYear] = TRUE (), DimDate[Year] <> 2020 ),
+			        "@s",
+			            VAR y = DimDate[Year]
+			            RETURN
+			                DIVIDE (
+			                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y, DimDate[MonthNumber] <= LM ),
+			                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y )
+			                )
+			    )
+			RETURN
+			    IF ( LM < 12, DIVIDE ( YtdValue, MEDIANX ( Shares, [@s] ) ) )
+		formatString: #,0
+		displayFolder: 06 Risk & Control
+		lineageTag: e7c05ab7-8652-4ca2-b2b8-820b57e289e8
+
+	/// Rango de la proyección (participación máxima y mínima de años completos, sin 2020).
+	measure 'Projection Range Label' =
+			VAR LastIdx = [Last Data Month Index]
+			VAR LY = INT ( DIVIDE ( LastIdx - 1, 12 ) )
+			VAR LM = LastIdx - LY * 12
+			VAR YtdValue = CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = LY )
+			VAR Shares =
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( DimDate[Year] ), REMOVEFILTERS ( DimDate ), DimDate[IsCompleteViolationYear] = TRUE (), DimDate[Year] <> 2020 ),
+			        "@s",
+			            VAR y = DimDate[Year]
+			            RETURN
+			                DIVIDE (
+			                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y, DimDate[MonthNumber] <= LM ),
+			                    CALCULATE ( [Total Traffic Violations], REMOVEFILTERS ( DimDate ), DimDate[Year] = y )
+			                )
+			    )
+			RETURN
+			    IF ( LM < 12, "Rango " & FORMAT ( DIVIDE ( YtdValue, MAXX ( Shares, [@s] ) ), "#,0" ) & " – " & FORMAT ( DIVIDE ( YtdValue, MINX ( Shares, [@s] ) ), "#,0" ) & " · estimación " & LY, "" )
+		displayFolder: 06 Risk & Control
+		lineageTag: 87d95d0d-58ae-4863-915c-043ededfa434
 
 	column Placeholder
 		dataType: string

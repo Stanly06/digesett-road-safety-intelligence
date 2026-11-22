@@ -34,6 +34,18 @@ table DimInfraction
 		summarizeBy: none
 		sourceColumn: CatalogStatus
 
+	/// Conducta de alto riesgo: factores de riesgo de la OMS (velocidad, alcohol y drogas, casco, cinturón, retención infantil, distracción) y maniobras peligrosas. Lista en data/reference/high_risk_types.csv.
+	column IsHighRisk = DimInfraction[InfractionID] IN { 92, 95, 93, 94, 90, 91, 84, 67, 10, 11, 59, 16, 86, 87, 58, 89, 62 }
+		dataType: boolean
+		lineageTag: 8bd1e542-764a-419b-bc16-51106f4c23cd
+		summarizeBy: none
+
+	/// Grupo para la composición de infracciones: Alto riesgo, Documentación o Resto.
+	column RiskGroup = IF ( DimInfraction[IsHighRisk], "Alto riesgo", IF ( DimInfraction[InfractionCategory] = "Documentación y registro", "Documentación", "Resto" ) )
+		dataType: string
+		lineageTag: c88c0a40-7b05-4a9d-92d7-559cf844b272
+		summarizeBy: none
+
 	hierarchy Infracción
 		lineageTag: c419d8f6-5166-4391-ab62-e240f4ebc060
 

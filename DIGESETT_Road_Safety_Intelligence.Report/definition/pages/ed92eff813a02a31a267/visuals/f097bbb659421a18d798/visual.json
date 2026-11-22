@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.8.0/schema.json",
   "name": "f097bbb659421a18d798",
   "position": {
     "x": 24,
     "y": 304,
-    "z": 14000,
+    "z": 15000,
     "height": 360,
     "width": 620,
-    "tabOrder": 14000
+    "tabOrder": 15000
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -28,7 +28,8 @@
               },
               "queryRef": "DimDate.YearLabel",
               "nativeQueryRef": "YearLabel",
-              "active": true
+              "active": true,
+              "displayName": "Año"
             }
           ]
         },
@@ -46,7 +47,8 @@
                 }
               },
               "queryRef": "_Measures.Total Road Fatalities",
-              "nativeQueryRef": "Total Road Fatalities"
+              "nativeQueryRef": "Total Road Fatalities",
+              "displayName": "Fallecimientos"
             }
           ]
         }

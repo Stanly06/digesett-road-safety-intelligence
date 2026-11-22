@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.8.0/schema.json",
   "name": "12c489d74f6f87b53724",
   "position": {
     "x": 600,
     "y": 680,
-    "z": 19000,
+    "z": 20000,
     "height": 352,
     "width": 620,
-    "tabOrder": 19000
+    "tabOrder": 20000
   },
   "visual": {
     "visualType": "lineChart",
@@ -28,7 +28,8 @@
               },
               "queryRef": "DimDate.MonthStartDate",
               "nativeQueryRef": "MonthStartDate",
-              "active": true
+              "active": true,
+              "displayName": "Mes"
             }
           ]
         },
@@ -46,7 +47,8 @@
                 }
               },
               "queryRef": "_Measures.Rolling 3M Average",
-              "nativeQueryRef": "Rolling 3M Average"
+              "nativeQueryRef": "Rolling 3M Average",
+              "displayName": "Media móvil 3 meses"
             },
             {
               "field": {
@@ -60,7 +62,8 @@
                 }
               },
               "queryRef": "_Measures.Rolling 12M Average",
-              "nativeQueryRef": "Rolling 12M Average"
+              "nativeQueryRef": "Rolling 12M Average",
+              "displayName": "Media móvil 12 meses"
             }
           ]
         }

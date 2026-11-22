@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.8.0/schema.json",
   "name": "5e6069d9c21af9bbff34",
   "position": {
     "x": 24,
     "y": 680,
-    "z": 18000,
+    "z": 19000,
     "height": 352,
     "width": 560,
-    "tabOrder": 18000
+    "tabOrder": 19000
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -23,12 +23,13 @@
                       "Entity": "DimDate"
                     }
                   },
-                  "Property": "YearLabel"
+                  "Property": "MonthStartDate"
                 }
               },
-              "queryRef": "DimDate.YearLabel",
-              "nativeQueryRef": "YearLabel",
-              "active": true
+              "queryRef": "DimDate.MonthStartDate",
+              "nativeQueryRef": "MonthStartDate",
+              "active": true,
+              "displayName": "Mes"
             }
           ]
         },
@@ -46,7 +47,8 @@
                 }
               },
               "queryRef": "_Measures.Dynamic Variance Absolute",
-              "nativeQueryRef": "Dynamic Variance Absolute"
+              "nativeQueryRef": "Dynamic Variance Absolute",
+              "displayName": "Cambio absoluto"
             }
           ]
         }
@@ -61,46 +63,13 @@
                     "Entity": "DimDate"
                   }
                 },
-                "Property": "YearLabel"
+                "Property": "MonthStartDate"
               }
             },
             "direction": "Ascending"
           }
         ]
       }
-    },
-    "objects": {
-      "labels": [
-        {
-          "properties": {
-            "show": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "color": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#F4F5F6'"
-                    }
-                  }
-                }
-              }
-            },
-            "fontSize": {
-              "expr": {
-                "Literal": {
-                  "Value": "9D"
-                }
-              }
-            }
-          }
-        }
-      ]
     },
     "visualContainerObjects": {
       "title": [
@@ -116,7 +85,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Cambio absoluto según comparación seleccionada'"
+                  "Value": "'Cambio absoluto mensual según comparación seleccionada'"
                 }
               }
             }

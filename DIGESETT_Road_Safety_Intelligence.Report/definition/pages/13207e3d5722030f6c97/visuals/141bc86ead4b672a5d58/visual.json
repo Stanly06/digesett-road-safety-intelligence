@@ -4,10 +4,10 @@
   "position": {
     "x": 260,
     "y": 88,
-    "z": 8000,
+    "z": 9000,
     "height": 82,
     "width": 380,
-    "tabOrder": 8000
+    "tabOrder": 9000
   },
   "visual": {
     "visualType": "slicer",
@@ -28,6 +28,7 @@
               },
               "queryRef": "DimInfraction.InfractionCategory",
               "nativeQueryRef": "InfractionCategory",
+              "displayName": "Categoría",
               "active": true
             }
           ]

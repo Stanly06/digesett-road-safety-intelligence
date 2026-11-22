@@ -1,0 +1,97 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "name": "79e47f1ffa3ef9e1215d",
+  "position": {
+    "x": 24,
+    "y": 96,
+    "z": 8000,
+    "height": 70,
+    "width": 1872,
+    "tabOrder": 8000
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Totales nacionales: esta página no responde a filtros. ",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#F4F5F6",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": "Población: Banco Mundial (WDI SP.POP.TOTL). Parque vehicular: DGII, al 31 de diciembre (2017–2022 redondeado a miles). Alto riesgo: factores de riesgo de la OMS y maniobras peligrosas. Las tasas describen; no explican causas.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#A7AEB6"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#A7AEB6"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

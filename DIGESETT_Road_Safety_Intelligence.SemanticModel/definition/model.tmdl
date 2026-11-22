@@ -11,7 +11,7 @@ annotation __PBI_TimeIntelligenceEnabled = 0
 
 annotation PBI_ProTooling = ["TMDLView_Desktop","DaxQueryView_Desktop","DevMode"]
 
-annotation PBI_QueryOrder = ["_Measures","DimDate","DimInfraction","FactTrafficViolations","FactRoadFatalities","pRutaDatos","stg_Infracciones","MapInfraction","stg_Fallecimientos","qa_InfraccionesSinMapear","Top N","Metric Selector","Comparison Selector"]
+annotation PBI_QueryOrder = ["_Measures","DimDate","DimInfraction","FactTrafficViolations","FactRoadFatalities","pRutaDatos","stg_Infracciones","MapInfraction","stg_Fallecimientos","qa_InfraccionesSinMapear","Top N","Metric Selector","Comparison Selector","Denominators"]
 
 ref table _Measures
 ref table DimDate
@@ -21,6 +21,7 @@ ref table FactRoadFatalities
 ref table 'Top N'
 ref table 'Metric Selector'
 ref table 'Comparison Selector'
+ref table Denominators
 
 ref cultureInfo en-US
 

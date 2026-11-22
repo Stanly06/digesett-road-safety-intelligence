@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.8.0/schema.json",
   "name": "e7ccb81ed8af1b62b1d6",
   "position": {
     "x": 24,
     "y": 304,
-    "z": 16000,
+    "z": 17000,
     "height": 400,
     "width": 860,
-    "tabOrder": 16000
+    "tabOrder": 17000
   },
   "visual": {
     "visualType": "clusteredBarChart",
@@ -28,7 +28,8 @@
               },
               "queryRef": "DimInfraction.InfractionType",
               "nativeQueryRef": "InfractionType",
-              "active": true
+              "active": true,
+              "displayName": "Tipo de infracción"
             }
           ]
         },
@@ -46,7 +47,8 @@
                 }
               },
               "queryRef": "_Measures.Violations Top N",
-              "nativeQueryRef": "Violations Top N"
+              "nativeQueryRef": "Violations Top N",
+              "displayName": "Infracciones (Top N)"
             }
           ]
         }

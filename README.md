@@ -4,16 +4,16 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Power%20BI-PBIP%20%C2%B7%20TMDL%20%C2%B7%20PBIR-FFC72C?style=for-the-badge&labelColor=1B1E22" alt="Power BI">
-  <img src="https://img.shields.io/badge/DAX-60%20measures-FFC72C?style=for-the-badge&labelColor=1B1E22" alt="DAX">
+  <img src="https://img.shields.io/badge/DAX-85%20measures-FFC72C?style=for-the-badge&labelColor=1B1E22" alt="DAX">
   <img src="https://img.shields.io/badge/Power%20Query-M%20ETL-2A9D8F?style=for-the-badge&labelColor=1B1E22" alt="Power Query">
   <img src="https://img.shields.io/badge/Python-validation-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=1B1E22" alt="Python">
   <img src="https://img.shields.io/badge/Data-DIGESETT%20%C2%B7%20datos.gov.do-0A7A33?style=for-the-badge&labelColor=1B1E22" alt="Data source">
-  <img src="https://img.shields.io/badge/Status-validated-2E7D32?style=for-the-badge&labelColor=1B1E22" alt="Status">
+  <a href="https://github.com/Stanly06/digesett-road-safety-intelligence/actions/workflows/qa.yml"><img src="https://img.shields.io/github/actions/workflow/status/Stanly06/digesett-road-safety-intelligence/qa.yml?style=for-the-badge&label=QA&labelColor=1B1E22" alt="QA"></a>
 </p>
 
 <p align="center">
   <b>A Power BI intelligence platform built on 13.3 million traffic violations and 18,785 road deaths recorded by DIGESETT in the Dominican Republic.</b><br>
-  <sub>Power Query ETL · constellation star schema · 60 DAX measures · 5-page report · every total reconciled with the source</sub>
+  <sub>Power Query ETL · constellation star schema · 85 DAX measures · 6-page report · web version with 8 pages · rates per inhabitant and per vehicle · statistical process control · automated QA</sub>
 </p>
 
 <p align="center">
@@ -84,6 +84,17 @@
 
 ---
 
+## 🌐 Web version
+
+The [interactive web version](https://stanly06.github.io/digesett/) mirrors the five Power BI pages (same slicers, KPIs and DAX logic re-implemented in JavaScript) and adds three pages: **Hallazgos** (findings computed live), **Riesgo y control** (rates, control chart, projection, mix and concentration) and **Calidad del dato** (coverage, zeros and outlier alerts). Clicking any bar, point, slice or cell cross-filters the page. Every measure is tested against an independent pandas implementation on each push ([`qa/`](qa/test_web.py)).
+
+<p align="center">
+  <img src="assets/screenshots/web_01_hallazgos.png" alt="Web version — findings" width="49%">
+  <img src="assets/screenshots/web_02_riesgo_y_control.png" alt="Web version — risk and control" width="49%">
+</p>
+
+---
+
 ## 💡 Key findings
 
 | | Finding | Value |
@@ -95,6 +106,11 @@
 | 📉 | Jan–Sep 2026 vs. Jan–Sep 2025 | **−17.2 %** |
 | 🕯️ | Road deaths in 2025 (highest in 2016–2025) | **2,172** |
 | 📅 | Month with the most violations and deaths on average | **December** |
+| 👥 | Road deaths per 100,000 inhabitants, 2018 → 2025 | **13.2 → 18.9** |
+| 🚗 | Road deaths per 10,000 vehicles, 2018 → 2025 | **3.28 → 3.27** (deaths grew in step with the fleet) |
+| 📊 | Months above the upper control limit (I-chart, 2016–2019 baseline) | **Mar 2024 · Dec 2025** |
+| 🔮 | 2026 year-end estimate (seasonal pattern of complete years, excl. 2020) | **≈2.04 M** (1.95–2.13 M) |
+| 🧪 | Data-quality alert: September 2026 breakdown by type | **23 types** collapse or spike while the monthly total looks normal |
 
 Twelve business questions are answered in [Business Questions & Insights](docs/business/02_Business_Questions_and_Insights.md), with observations kept separate from hypotheses.
 
@@ -225,13 +241,16 @@ Returns the previous-year value **only** when both periods have the same months 
 ├── assets/              ← banner, screenshots, tour GIF, PDF
 ├── data/
 │   ├── raw/             ← DIGESETT source files
-│   ├── reference/       ← MapInfraction.csv · DimInfraction.csv
+│   ├── reference/       ← MapInfraction · DimInfraction · denominators · high-risk types
 │   └── validation/      ← control totals
 ├── powerquery/          ← M code, one file per query
 ├── dax/                 ← measure library
 ├── model/               ← TMDL scripts
 ├── theme/               ← Power BI theme JSON
-├── scripts/             ← Python profiling
+├── web/               ← interactive web version (index.src.html + data.json)
+├── qa/                ← pandas reference + browser tests (run in CI)
+├── .github/workflows/ ← QA pipeline
+├── scripts/             ← Python profiling, data/page builders, report generator
 └── docs/                ← documentation (Spanish)
 ```
 
@@ -262,7 +281,8 @@ Returns the previous-year value **only** when both periods have the same months 
 
 - Recorded violations reflect **enforcement as well as behavior**; a rise does not prove riskier driving.
 - Deaths are national monthly totals with no breakdown by violation, province or vehicle. The report shows both series side by side and makes **no causal claim**.
-- No exposure data (vehicles, population, distance), so **no rates** are calculated.
+- Rates use population (World Bank) and registered vehicles (DGII); there is no distance-travelled data, and 2017–2022 fleet figures are rounded to thousands.
+- The September 2026 breakdown by type shows a likely column shift in the source file: the monthly total is used, the detail by type should be read with caution (see the *Calidad del dato* page).
 - Violation categories are the analyst's own grouping, not an official DIGESETT classification.
 
 ---
@@ -272,7 +292,10 @@ Returns the previous-year value **only** when both periods have the same months 
 - [x] ETL, star schema, 60 DAX measures, 5-page report, validation, documentation
 - [ ] Public Power BI link
 - [ ] Drill-through, report-page tooltips, bookmarks and reset button
-- [ ] Vehicle fleet (DGII) and population (ONE) to compute rates per 10,000 vehicles / 100,000 people
+- [x] Vehicle fleet (DGII) and population (World Bank) → rates per 10,000 vehicles / 100,000 inhabitants
+- [x] Statistical process control, seasonal index, concentration (HHI), high-risk share, year-end projection
+- [x] Web version (8 pages, cross-filtering) and automated QA in GitHub Actions
+- [ ] Road deaths by province and vehicle type (OPSEVI), if a downloadable breakdown is published
 
 ---
 

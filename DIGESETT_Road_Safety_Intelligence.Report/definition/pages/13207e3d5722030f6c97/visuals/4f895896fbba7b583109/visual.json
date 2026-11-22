@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.8.0/schema.json",
   "name": "4f895896fbba7b583109",
   "position": {
     "x": 1140,
     "y": 304,
-    "z": 16000,
+    "z": 17000,
     "height": 400,
     "width": 756,
-    "tabOrder": 16000
+    "tabOrder": 17000
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -28,7 +28,8 @@
               },
               "queryRef": "DimDate.MonthNameShort",
               "nativeQueryRef": "MonthNameShort",
-              "active": true
+              "active": true,
+              "displayName": "Mes"
             }
           ]
         },
@@ -46,7 +47,8 @@
                 }
               },
               "queryRef": "_Measures.Average Monthly Violations",
-              "nativeQueryRef": "Average Monthly Violations"
+              "nativeQueryRef": "Average Monthly Violations",
+              "displayName": "Promedio mensual"
             }
           ]
         }

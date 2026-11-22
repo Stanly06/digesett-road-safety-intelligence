@@ -1,0 +1,27 @@
+name: QA web report
+
+on:
+  push:
+    paths: ["web/**", "data/**", "qa/**", "scripts/**", ".github/workflows/qa.yml"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r qa/requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Rebuild page and data, and check they are up to date
+        run: |
+          python scripts/build_web_data.py
+          python scripts/build_web_page.py
+          git diff --exit-code -- web/data.json web/index.html
+      - name: Compare web measures against the pandas reference
+        run: python qa/test_web.py

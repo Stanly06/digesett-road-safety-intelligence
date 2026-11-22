@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.8.0/schema.json",
   "name": "0900c1d2ab64c6d58d74",
   "position": {
     "x": 1200,
     "y": 720,
-    "z": 19000,
+    "z": 20000,
     "height": 312,
     "width": 696,
-    "tabOrder": 19000
+    "tabOrder": 20000
   },
   "visual": {
     "visualType": "tableEx",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DimInfraction.InfractionType",
-              "nativeQueryRef": "InfractionType"
+              "nativeQueryRef": "InfractionType",
+              "displayName": "Tipo de infracción"
             },
             {
               "field": {
@@ -41,7 +42,8 @@
                 }
               },
               "queryRef": "DimInfraction.LegalReference",
-              "nativeQueryRef": "LegalReference"
+              "nativeQueryRef": "LegalReference",
+              "displayName": "Ref. legal"
             },
             {
               "field": {
@@ -55,7 +57,8 @@
                 }
               },
               "queryRef": "_Measures.Total Traffic Violations",
-              "nativeQueryRef": "Total Traffic Violations"
+              "nativeQueryRef": "Total Traffic Violations",
+              "displayName": "Infracciones"
             },
             {
               "field": {
@@ -69,7 +72,8 @@
                 }
               },
               "queryRef": "_Measures.Infraction Share %",
-              "nativeQueryRef": "Infraction Share %"
+              "nativeQueryRef": "Infraction Share %",
+              "displayName": "Participación %"
             },
             {
               "field": {
@@ -83,7 +87,8 @@
                 }
               },
               "queryRef": "_Measures.YoY Growth %",
-              "nativeQueryRef": "YoY Growth %"
+              "nativeQueryRef": "YoY Growth %",
+              "displayName": "Variación interanual %"
             }
           ]
         }

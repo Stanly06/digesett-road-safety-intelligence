@@ -1,0 +1,11 @@
+Year,Population,PopulationSource,VehicleFleet,VehicleFleetPrecision,VehicleFleetSource
+2016,10551430,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),3854038,exact,DGII Boletín Parque Vehicular 2016 (al 31-dic)
+2017,10666843,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),4097000,rounded_thousands,DGII Informe Parque Vehicular 2024 - Gráfica 2.1.1
+2018,10782053,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),4351000,rounded_thousands,DGII Informe Parque Vehicular 2024 - Gráfica 2.1.1
+2019,10894043,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),4635000,rounded_thousands,DGII Informe Parque Vehicular 2024 - Gráfica 2.1.1
+2020,11008300,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),4842000,rounded_thousands,DGII Informe Parque Vehicular 2024 - Gráfica 2.1.1
+2021,11123476,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),5152000,rounded_thousands,DGII Informe Parque Vehicular 2024 - Gráfica 2.1.1
+2022,11230734,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),5463000,rounded_thousands,DGII Informe Parque Vehicular 2024 - Gráfica 2.1.1
+2023,11331265,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),5809136,exact,DGII Informe Parque Vehicular 2024 - Cuadro 2.2.1 (al 31-dic)
+2024,11427557,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),6194052,exact,DGII Informe Parque Vehicular 2024 - Cuadro 2.2.1 (al 31-dic)
+2025,11520487,World Bank WDI SP.POP.TOTL (mid-year; updated 2026-07-07),6640871,exact,DGII Informe Parque Vehicular 2025 (al 31-dic)

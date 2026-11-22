@@ -109,3 +109,15 @@ La limpieza no cambia el total (13,289,441 antes y después): las 608 filas elim
 1. Ejecutar `scripts/01_profile_digesett.py` para el perfilado.
 2. Comparar con `data/validation/control_totals_violations.csv`.
 3. En la vista de consultas DAX de Power BI, ejecutar `SUMMARIZECOLUMNS` por año con `[Total Traffic Violations]` y `[Total Road Fatalities]`.
+
+---
+
+## Pruebas automáticas de la versión web (v2, noviembre 2026)
+
+La versión web (`web/`) recalcula en JavaScript la misma lógica DAX del modelo. Para comprobar que ambos coinciden:
+
+- `qa/reference.py` implementa en pandas, de forma independiente, las medidas de las cinco páginas (totales, meses con datos, promedios, variación interanual comparable, YTD, Top N, medias móviles, MoM, fallecimientos, período común) y la analítica de la página *Riesgo y control* (tasas, límites de control, reglas 1 y 2, proyección, composición, HHI).
+- `qa/test_web.py` abre la página en un navegador sin interfaz, prueba cientos de combinaciones aleatorias de año, mes, trimestre, categoría y tipo, compara cada valor con la referencia y simula clics de filtrado cruzado.
+- `.github/workflows/qa.yml` regenera `web/data.json` y `web/index.html`, verifica que estén al día y corre las pruebas en cada push.
+
+Resultado de la última ejecución: 14,020 comprobaciones, 0 diferencias. En Power BI Desktop se verificó la página *Risk & Control* con los mismos valores: 18.9 fallecimientos por 100,000 habitantes (2025), 3.27 por 10,000 vehículos, 355 infracciones por 1,000 vehículos, 51.5 % de alto riesgo y proyección 2026 de 2,037,160 (rango 1,946,189 – 2,130,676).

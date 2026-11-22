@@ -4,10 +4,10 @@
   "position": {
     "x": 24,
     "y": 720,
-    "z": 18000,
+    "z": 19000,
     "height": 312,
     "width": 1160,
-    "tabOrder": 18000
+    "tabOrder": 19000
   },
   "visual": {
     "visualType": "pivotTable",
@@ -28,6 +28,7 @@
               },
               "queryRef": "DimInfraction.InfractionCategory",
               "nativeQueryRef": "InfractionCategory",
+              "displayName": "Categoría",
               "active": true
             },
             {
@@ -43,6 +44,7 @@
               },
               "queryRef": "DimInfraction.InfractionType",
               "nativeQueryRef": "InfractionType",
+              "displayName": "Tipo de infracción",
               "active": true
             }
           ]
@@ -62,6 +64,7 @@
               },
               "queryRef": "DimDate.YearLabel",
               "nativeQueryRef": "YearLabel",
+              "displayName": "Año",
               "active": true
             }
           ]
@@ -80,7 +83,8 @@
                 }
               },
               "queryRef": "_Measures.Selected Metric",
-              "nativeQueryRef": "Selected Metric"
+              "nativeQueryRef": "Selected Metric",
+              "displayName": "Valor"
             }
           ]
         }

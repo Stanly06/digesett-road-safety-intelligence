@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.8.0/schema.json",
   "name": "c75c0ca296d50ad323d4",
   "position": {
     "x": 1140,
     "y": 680,
-    "z": 18000,
+    "z": 19000,
     "height": 352,
     "width": 756,
-    "tabOrder": 18000
+    "tabOrder": 19000
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -28,7 +28,8 @@
               },
               "queryRef": "DimDate.MonthNameShort",
               "nativeQueryRef": "MonthNameShort",
-              "active": true
+              "active": true,
+              "displayName": "Mes"
             }
           ]
         },
@@ -46,7 +47,8 @@
                 }
               },
               "queryRef": "_Measures.Average Monthly Fatalities",
-              "nativeQueryRef": "Average Monthly Fatalities"
+              "nativeQueryRef": "Average Monthly Fatalities",
+              "displayName": "Promedio mensual de fallecimientos"
             }
           ]
         }

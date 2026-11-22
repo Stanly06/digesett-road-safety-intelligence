@@ -12,3 +12,8 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Power BI Desktop workspace files
+**/.pbi/
+**/TMDLScripts/
+**/DAXQueries/

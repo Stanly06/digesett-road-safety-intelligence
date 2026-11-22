@@ -1,5 +1,9 @@
 # Web version of the report
 
+Eight pages: the five Power BI pages plus **Hallazgos** (findings computed live), **Riesgo y control** (rates per inhabitant and per vehicle, I-chart of monthly deaths, year-end projection, high-risk mix, HHI, seasonal index) and **Calidad del dato** (coverage, zeros, outlier alerts and methodology).
+
+Build: `python scripts/build_web_data.py` (data.json from the validated CSVs) and `python scripts/build_web_page.py` (index.html from index.src.html + logo).
+
 Interactive HTML version of the five Power BI pages: same slicers, KPIs and visuals per page, with the DAX measures re-implemented in JavaScript. Built with [Apache ECharts](https://echarts.apache.org/) from the same validated data (`data.json` is generated from `data/validation/` and `data/reference/`).
 
 **Live:** https://stanly06.github.io/digesett/
