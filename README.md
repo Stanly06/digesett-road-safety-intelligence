@@ -17,12 +17,17 @@
 </p>
 
 <p align="center">
+  <a href="https://stanly06.github.io/digesett/"><img src="https://img.shields.io/badge/%E2%96%B6%20Open%20the%20interactive%20report-stanly06.github.io%2Fdigesett-FFC72C?style=for-the-badge&labelColor=0A7A33" alt="Open the interactive web report"></a>
+</p>
+
+<p align="center">
   <a href="#-dashboard-tour">Dashboard</a> ·
   <a href="#-key-findings">Findings</a> ·
   <a href="#-how-it-works">How it works</a> ·
   <a href="#-data-model">Data model</a> ·
   <a href="#-run-it-locally">Run it</a> ·
-  <a href="docs/README.md">Documentation</a>
+  <a href="docs/README.md">Documentation</a> ·
+  <a href="web/README.md">Web version</a>
 </p>
 
 > [!NOTE]
